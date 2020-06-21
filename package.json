@@ -1,0 +1,53 @@
+{
+  "name": "openapi-mock-aws",
+  "version": "0.0.1",
+  "description": "Open API Spec documentation and mocking tool with support for deploying the API to AWS API Gateway",
+  "bin": {
+    "amuck": "./src/cli.js"
+  },
+  "keywords": [
+    "oas",
+    "openapi",
+    "mock",
+    "api"
+  ],
+  "author": "Brett Uglow",
+  "license": "Apache-2.0",
+  "scripts": {
+    "lint": "eslint --max-warnings=0 --fix src/",
+    "verify": "eslint --max-warnings=0 src/",
+    "test": "npm-run-all test:report",
+    "test:unit": "jest",
+    "test:report": "jest --no-cache --coverage --json --outputFile=test-reports/unit/unit.json",
+    "test:reportlist": "jest --no-cache --coverage",
+    "test:watch": "jest --watchAll"
+  },
+  "devDependencies": {
+    "@getify/eslint-plugin-proper-arrows": "9.1.1",
+    "eslint": "7.0.0",
+    "eslint-config-prettier": "6.10.0",
+    "eslint-plugin-node": "11.0.0",
+    "eslint-plugin-prettier": "3.1.2",
+    "eslint-plugin-unicorn": "17.2.0",
+    "jest": "25.1.0",
+    "npm-run-all": "4.1.5",
+    "prettier": "2.0.5",
+    "spawn-command": "0.0.2-1"
+  },
+  "dependencies": {
+    "commander": "^5.1.0",
+    "lodash": "4.17.15",
+    "mkdirp": "1.0.4",
+    "node-fetch": "2.6.0",
+    "p-pipe": "3.1.0",
+    "upath": "1.2.0",
+    "winston": "3.2.1"
+  },
+  "engines": {
+    "node": ">=10"
+  },
+  "files": [
+    "src",
+    "!src/*.spec.js"
+  ]
+}
