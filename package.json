@@ -36,6 +36,7 @@
   },
   "dependencies": {
     "commander": "^5.1.0",
+    "jest-diff": "26.2.0",
     "lodash": "4.17.15",
     "mkdirp": "1.0.4",
     "node-fetch": "2.6.0",
@@ -44,7 +45,7 @@
     "winston": "3.2.1"
   },
   "engines": {
-    "node": ">=10"
+    "node": ">=10.17.0"
   },
   "files": [
     "src",

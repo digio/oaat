@@ -1,6 +1,14 @@
-const { join, relative } = require('upath');
+const { join } = require('upath');
 const logger = require('winston');
-const { pipe, getAbsSpecFilePath, getExampleObject, readJsonFile, traverse, writeOutputFile } = require('./utils');
+const {
+  IGNORE_ENDPOINT_NAME,
+  pipe,
+  getAbsSpecFilePath,
+  getExampleObject,
+  readJsonFile,
+  traverse,
+  writeOutputFile,
+} = require('./utils');
 const cloneDeep = require('lodash/cloneDeep');
 const { readFileSync } = require('fs');
 
@@ -10,14 +18,10 @@ const WEB_PAGE_LOGO_TOKEN = '$$_logoUrl_$$';
 const WEB_PAGE_TITLE = '$$_title_$$';
 const WEB_PAGE_FAVICON_HREF = '$$_faviconHref_$$';
 
-function addGatewayInfo(specFile, outputFile, server, config) {
+function addGatewayInfo(specFile, server, config) {
   const specObj = readJsonFile(specFile);
   const absSpecFilePath = getAbsSpecFilePath(specFile);
-  const destPath = getAbsSpecFilePath(outputFile);
   const serverUrl = server || specObj.servers[0].url;
-
-  // Set the config.outputFile as that is what writeoOutputFile() uses
-  config.outputFile = join(destPath, outputFile);
 
   // define the data processing pipeline
   const pipeline = pipe(
@@ -29,11 +33,17 @@ function addGatewayInfo(specFile, outputFile, server, config) {
     filterSchemas,
     writeOutputFile,
     () => {
-      logger.info(`Written ${outputFile}`);
+      if (config.mock) {
+        logger.info(`Written ${config.outputFile} with mock responses`);
+      } else if (config.proxy) {
+        logger.info(`Written ${config.outputFile}, proxying responses to ${serverUrl}`);
+      } else {
+        logger.info(`Written ${config.outputFile}`);
+      }
     },
   );
 
-  pipeline({ specObj, serverUrl, destPath, specFile, absSpecFilePath, config });
+  pipeline({ specObj, serverUrl, specFile, absSpecFilePath, config });
 }
 
 function setServerUrl(params) {
@@ -48,71 +58,108 @@ function setServerUrl(params) {
 
 function decorateExistingEndpoints(params) {
   const { specObj } = params;
-  specObj.paths = getAPIEndpoints(specObj);
+
+  specObj.paths = mockAPIEndpoints(params);
 
   return params;
 }
 
-function getAPIEndpoints(specObj) {
-  return Object.keys(specObj.paths)
-    .filter((path) => path !== '/')
-    .reduce((acc, path) => ({ ...acc, ...transformEndpoint(path, specObj.paths[path]) }), {});
+function mockAPIEndpoints(params) {
+  const { specObj, config, serverUrl } = params;
+  const newConfig = { isMock: config.mock, isProxy: config.proxy, serverUrl };
+  return Object.keys(specObj.paths).reduce(
+    (acc, path) => ({ ...acc, ...transformEndpoint(newConfig, path, specObj.paths[path]) }),
+    {},
+  );
 }
 
 // For each response in the endpoint, we need to produce a new endpoint with example data
 // (except for the 200 response, which inherits the original endpointName
-function transformEndpoint(path, data) {
+function transformEndpoint(config, path, data) {
   const newEndPoints = Object.keys(data).reduce((acc, method) => {
+    // If this path-method should be ignored, ignore it
+    if (data[method][IGNORE_ENDPOINT_NAME]) {
+      return acc;
+    }
+
     // Attach the path-status (with child-method) configs to the accumulated config.
     // Effectively, we group the path-status keys together, with their method
     // config as a child property - just like in specFile
-    const pathStatusConfig = transformEndpointMethod(path, method, data[method]);
+    const pathStatusConfig = transformEndpointMethod(config, path, method, data[method]);
     Object.keys(pathStatusConfig).forEach((pathStatus) => {
       acc[pathStatus] = { ...acc[pathStatus], ...pathStatusConfig[pathStatus] };
     });
 
     return acc;
   }, {});
-  // console.log(newEndPoints);
 
   return newEndPoints;
 }
 
 // We need to iterate over the response codes as well
-function transformEndpointMethod(path, method, data) {
-  const newEndPoints = Object.keys(data.responses).reduce((acc, statusCode) => {
-    const { newPath, config } = transformEndpointMethodStatus(path, method, statusCode, data);
-    // console.log('config', newPath, config);
-    acc[newPath] = { ...acc[newPath], ...config };
-    return { ...acc };
-  }, {});
-  // console.log(newEndPoints);
+function transformEndpointMethod(config, path, method, data) {
+  if (config.isMock) {
+    const newEndPoints = Object.keys(data.responses).reduce((acc, statusCode) => {
+      const mockConfig = mockEndpointMethodStatus(path, method, statusCode, data);
+      // logger.debug('config', newPath, config);
+      if (!mockConfig) {
+        return acc;
+      }
+      const { newPath, apiConfig } = mockConfig;
+      acc[newPath] = { ...acc[newPath], ...apiConfig };
+      return { ...acc };
+    }, {});
+    // logger.debug(newEndPoints);
+    return newEndPoints;
+  }
 
-  return newEndPoints;
+  if (config.isProxy) {
+    const newEndPoints = proxyEndpointMethod(path, method, config.serverUrl, data);
+    logger.debug('newEndpoints', newEndPoints);
+    return newEndPoints;
+  }
+
+  // Else, the only thing we wand to do is have the web and swagger endpoints (not expose the sepcObj endpoints)
+  return {};
 }
 
-function transformEndpointMethodStatus(path, method, statusCode, data) {
-  const endpointName = statusCode === '200' ? path : `${path}/${statusCode}`;
+function mockEndpointMethodStatus(path, method, statusCode, data) {
+  // If the response should be ignored, ignore it.
+  if (data.responses[statusCode][IGNORE_ENDPOINT_NAME]) {
+    return;
+  }
 
+  const endpointName = statusCode === '200' ? path : `${path}/${statusCode}`;
   const exampleObj = getExampleObject(data.responses[statusCode]); // get the first example object, if it exists
 
-  // TODO: Only mock if we've been asked to mock (config.mock)
   if (exampleObj && exampleObj.responseFile) {
-    console.log(`Mocking '${method.toUpperCase()} ${endpointName}' with '${exampleObj.responseFile}'`);
+    logger.info(`Mocking '${method.toUpperCase()} ${endpointName}' with '${exampleObj.responseFile}'`);
   }
   const responseData = exampleObj && exampleObj.responseFile ? require(join(__dirname, exampleObj.responseFile)) : '';
 
   return {
     newPath: endpointName,
-    config: {
+    apiConfig: {
       [method]: {
-        tags: data.tags,
-        summary: data.summary,
-        parameters: data.parameters,
+        ...data,
         responses: {
           [statusCode]: data.responses[statusCode],
         },
-        ...getAWSIntegrationResponse(statusCode, { 'application/json': JSON.stringify(responseData) }),
+        ...getAWSMockIntegrationResponse(statusCode, { 'application/json': JSON.stringify(responseData) }),
+      },
+    },
+  };
+}
+
+function proxyEndpointMethod(path, method, serverUrl, data) {
+  const requestParameters = {};
+  // Must be in the format: "integration.request.{path|querystring|header}.{paramName}" : "method.request.{path|querystring|header}.{paramName}"
+
+  return {
+    [path]: {
+      [method]: {
+        ...data,
+        ...getAWSHttpProxyIntegrationResponse(method, `${serverUrl}${path}`),
       },
     },
   };
@@ -153,6 +200,7 @@ function addSpecFileEndpoint(params) {
 
   specObj.paths[config.specFileEndpoint] = {
     get: {
+      'x-ignore': true,
       tags: ['meta'],
       summary: 'Open API Spec schema',
       parameters: [],
@@ -185,7 +233,7 @@ function addSpecFileEndpoint(params) {
           },
         },
       },
-      ...getAWSIntegrationResponse(
+      ...getAWSMockIntegrationResponse(
         '200',
         { 'application/json': JSON.stringify(filteredSwagger).replace(/"\$ref"/g, '"\\$ref"') }, // We need to escape "$ref", as AWS treats any property starting with "$" as a Velocity template variable!
         {
@@ -214,10 +262,11 @@ function addWebsiteEndpoint(params) {
     .replace(WEB_PAGE_TITLE, config.webTitle)
     .replace(WEB_PAGE_FAVICON_HREF, config.webFaviconHref);
 
-  // console.log('Website data', websiteData);
+  logger.debug('Website data', websiteData);
 
   specObj.paths[config.specUIEndpoint] = {
     get: {
+      'x-ignore': true,
       tags: ['meta'],
       responses: {
         '200': {
@@ -232,7 +281,7 @@ function addWebsiteEndpoint(params) {
           },
         },
       },
-      ...getAWSIntegrationResponse(200, { 'text/html': websiteData }),
+      ...getAWSMockIntegrationResponse(200, { 'text/html': websiteData }),
     },
   };
 
@@ -263,9 +312,10 @@ function filterNonWebsiteRequiredNodes(obj, key) {
   return obj;
 }
 
-function getAWSIntegrationResponse(statusCode, responseTemplates, responseParameters) {
+function getAWSMockIntegrationResponse(statusCode, responseTemplates, responseParameters) {
   return {
     [AMAZON_INTEGRATION_PROP]: {
+      type: 'MOCK',
       responses: {
         default: {
           statusCode: String(statusCode),
@@ -277,7 +327,17 @@ function getAWSIntegrationResponse(statusCode, responseTemplates, responseParame
         'application/json': '{"statusCode": 200}',
       },
       passthroughBehavior: 'when_no_match',
-      type: 'mock',
+    },
+  };
+}
+
+function getAWSHttpProxyIntegrationResponse(httpMethod, uri, requestParameters) {
+  return {
+    [AMAZON_INTEGRATION_PROP]: {
+      type: 'HTTP_PROXY',
+      httpMethod,
+      uri,
+      requestParameters,
     },
   };
 }
@@ -314,7 +374,7 @@ function getCORSOptionsResponse() {
           },
         },
       },
-      ...getAWSIntegrationResponse('200', undefined, {
+      ...getAWSMockIntegrationResponse('200', undefined, {
         'method.response.header.Access-Control-Allow-Methods': "'GET,OPTIONS'",
         'method.response.header.Access-Control-Allow-Headers':
           "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'",

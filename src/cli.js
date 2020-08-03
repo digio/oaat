@@ -50,20 +50,54 @@ program
 
 program
   .command('build <jsonFile> <outputJsonFile> [serverUrl]')
-  .description('Adds custom headers & Swagger UI endpoint to allow deployment of spec file to AWS API Gateway')
+  .description(
+    'Adds custom headers & Swagger UI endpoint to allow deployment of spec file to AWS API Gateway with documentation',
+  )
   .option('-c, --config <file>', 'Config file to override default config')
-  .option('-m, --mock', 'Uses the responses as mock responses')
+  .option('-m, --mock', 'Uses the recorded responses as mock responses')
+  // .option('-p, --proxy', 'Proxies the endpoints through API Gateway') // To be implmented later
   .option('-q, --quiet', 'No logging')
   .option('-v, --verbose', 'Verbose logging')
   .option('-d, --dry-run', 'Dry run (no changes made)')
   // eslint-disable-next-line @getify/proper-arrows/where
   .action((jsonFile, outputJsonFile, serverUrl, cmd) => {
-    const { log, config } = getLogAndConfig('build', cmd);
-    log.debug(`command args: ${jsonFile}`);
+    // Merge the outputJsonFile into the config.outputFile property,
+    // so we can reuse the pathing logic there
+    const { log, config } = getLogAndConfig('build', { ...cmd, output: outputJsonFile });
+    log.debug(`command args: ${jsonFile}, ${config.outputFile}`);
+
+    // Add additional flags
+    config.mock = cmd.mock;
+    config.proxy = cmd.proxy;
 
     const { addGatewayInfo } = require('./addGatewayInfo');
     try {
-      addGatewayInfo(jsonFile, outputJsonFile, serverUrl, config);
+      addGatewayInfo(jsonFile, serverUrl, config);
+    } catch (err) {
+      log.error(err);
+    }
+  });
+
+program
+  .command('compare <jsonFile> [serverUrl]')
+  .description('Compares recorded responses (referenced by the spec file) to the latest responses')
+  .option('-c, --config <file>', 'Config file to override default config')
+  .option('-m --compare-mode <mode>', 'Comparison mode: "value" (default), "type"')
+  .option('-q, --quiet', 'no logging')
+  .option('-v, --verbose', 'verbose logging')
+  // eslint-disable-next-line @getify/proper-arrows/where
+  .action(async (jsonFile, serverUrl, cmd) => {
+    const { log, config } = getLogAndConfig('compare', cmd);
+
+    config.compareMode = cmd.compareMode;
+
+    const { compareCommand } = require('./compare');
+    try {
+      // We deliberately want to return a non-zero error code for this command,
+      // allow CI tools to fail on-error
+      const errorCode = await compareCommand(jsonFile, serverUrl, config);
+      // eslint-disable-next-line no-process-exit
+      return process.exit(errorCode);
     } catch (err) {
       log.error(err);
     }

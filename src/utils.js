@@ -7,12 +7,12 @@ const pipe = require('p-pipe');
 
 const EXAMPLE_PROP_NAME = 'x-examples';
 const IGNORE_PROPERTY_PROP_NAME = 'x-test-ignore-paths';
+const IGNORE_ENDPOINT_NAME = 'x-ignore';
 
 // Returns fetch config for calling all the endpoints
 function getFetchConfigForAPIEndpoints(params) {
   const { specObj } = params;
   const fetchConfigs = Object.keys(specObj.paths)
-    .filter((path) => path !== '/')
     .map((path) => transformEndpointPath(path, specObj.paths[path]))
     .reduce((acc, val) => acc.concat(val), []); // Flatten one level
 
@@ -24,10 +24,51 @@ function getFetchConfigForAPIEndpoints(params) {
   };
 }
 
+function concurrentFunctionProcessor(fnArray, maxConcurrent = 15) {
+  return new Promise((resolve) => {
+    // https://nodesource.com/blog/understanding-streams-in-nodejs/
+    // Create a stream from an array of functions, that execute those functions
+    // until we reach the maxConcurrent limit. When a function has resolved,
+    // we can resume the stream and process the next function.
+    const { Readable } = require('stream');
+    const readableStream = Readable.from(fnArray); // In Node 10.17.0 upwards
+    const total = fnArray.length;
+    let inFlight = 0;
+    let counter = 0;
+    const reachedLimit = () => inFlight >= maxConcurrent;
+    const promises = [];
+
+    readableStream.on('data', (data) => {
+      counter++;
+      inFlight++;
+      promises.push(
+        Promise.resolve(data(counter, total)).finally(() => {
+          inFlight--;
+          logger.debug('Promise resolved', inFlight, readableStream.readableLength);
+          readableStream.resume();
+        }),
+      );
+
+      // If we've reached the limit, pause the stream
+      if (reachedLimit()) {
+        readableStream.pause();
+      }
+    });
+
+    readableStream.on('end', () => {
+      logger.debug('concurrentFunctionProcessor stream END');
+      // Return the resolved promises
+      Promise.all(promises).then((results) => resolve(results));
+    });
+  });
+}
+
 // For each response in the endpoint, we need to produce a new endpoint with example data
 function transformEndpointPath(path, data) {
   const newEndPoints = Object.keys(data)
-    .map((method) => transformEndpointMethod(path, method, data[method]))
+    .map((method) => {
+      return data[method][IGNORE_ENDPOINT_NAME] ? [] : transformEndpointMethod(path, method, data[method]);
+    })
     .reduce((acc, val) => acc.concat(val), []); // Flatten one level
 
   // console.log('A', newEndPoints);
@@ -38,7 +79,11 @@ function transformEndpointPath(path, data) {
 // We need to iterate over the response codes as well
 function transformEndpointMethod(path, method, data) {
   const newEndPoints = Object.keys(data.responses)
-    .map((statusCode) => transformEndpointMethodResponse(path, method, Number(statusCode), data))
+    .map((statusCode) => {
+      return data.responses[statusCode][IGNORE_ENDPOINT_NAME]
+        ? []
+        : transformEndpointMethodResponse(path, method, Number(statusCode), data);
+    })
     .reduce((acc, val) => acc.concat(val), []); // Flatten one level
   // console.log(newEndPoints);
 
@@ -122,6 +167,14 @@ const paramTypeMapping = {
     fc.url = fc.url.replace(`{${pathParam}}`, paramValue);
     return fc;
   },
+  header: (fc, paramValue, paramKey) => {
+    if (!fc.config.headers) {
+      fc.config.headers = { [paramKey]: paramValue };
+      return fc;
+    }
+    Object.assign(fc.config.headers, { [paramKey]: paramValue });
+    return fc;
+  },
 };
 /* eslint-enable @getify/proper-arrows/where */
 
@@ -134,50 +187,55 @@ const paramTypeMapping = {
  * @return {Promise<{fetchConfigs}>}
  */
 async function addParamsToFetchConfig(params) {
-  const { fetchConfigs, serverUrl, absSpecFilePath } = params;
+  // console.log('add', fetchConfigs );
+  const { fetchConfigs, config, serverUrl, absSpecFilePath } = params;
+
+  const newConfigs = await concurrentFunctionProcessor(
+    fetchConfigs.map((fconfig) => () => resolveFetchConfigParams({ fconfig, serverUrl, absSpecFilePath })),
+    config.simultaneousRequests,
+  );
+
+  logger.debug('addParamsToFetchConfig Params', newConfigs);
+
+  return { ...params, fetchConfigs: newConfigs };
+}
+
+async function resolveFetchConfigParams(params) {
+  let { fconfig, serverUrl, absSpecFilePath } = params;
   // console.log('CONFIG', absSpecFilePath);
 
-  const newConfigs = await Promise.all(
-    fetchConfigs.map(async (fconfig) => {
-      // console.log('CONFIG', fconfig);
-
-      // Need to loop over the parameters array
-      await Promise.all(
-        (fconfig.apiEndpoint.parameters || []).map(async (param, index) => {
-          const paramType = param.in;
-          const pathParam = param.name;
-          const paramValue = await getParamValue(
-            serverUrl,
-            fconfig.apiEndpoint.responses[fconfig.expectedStatusCode][EXAMPLE_PROP_NAME][fconfig.exampleName]
-              .parameters[index],
-            absSpecFilePath,
-          );
-          fconfig = paramTypeMapping[paramType](fconfig, paramValue, pathParam);
-        }),
+  // Need to loop over the parameters array
+  await Promise.all(
+    (fconfig.apiEndpoint.parameters || []).map(async (param, index) => {
+      const paramType = param.in;
+      const pathParam = param.name;
+      const paramValue = await getParamValue(
+        serverUrl,
+        fconfig.apiEndpoint.responses[fconfig.expectedStatusCode][EXAMPLE_PROP_NAME][fconfig.exampleName].parameters[
+          index
+        ],
+        absSpecFilePath,
       );
-
-      // If the API has a requestBody, then there must be a requestBody example too
-      if (fconfig.apiEndpoint.requestBody) {
-        const paramValue = await getParamValue(
-          serverUrl,
-          fconfig.apiEndpoint.responses[fconfig.expectedStatusCode][EXAMPLE_PROP_NAME][fconfig.exampleName].requestBody,
-          absSpecFilePath,
-        );
-        fconfig = paramTypeMapping.body(fconfig, paramValue);
-      }
-
-      // In the case where we have query parameters, append them to the url
-      if (Object.keys(fconfig.query).length) {
-        fconfig.url += `?${qs.stringify(fconfig.query)}`;
-      }
-
-      return fconfig;
+      fconfig = paramTypeMapping[paramType](fconfig, paramValue, pathParam);
     }),
   );
 
-  logger.debug('addParamsToFetchConfig Params', params.config);
+  // If the API has a requestBody, then there must be a requestBody example too
+  if (fconfig.apiEndpoint.requestBody) {
+    const paramValue = await getParamValue(
+      serverUrl,
+      fconfig.apiEndpoint.responses[fconfig.expectedStatusCode][EXAMPLE_PROP_NAME][fconfig.exampleName].requestBody,
+      absSpecFilePath,
+    );
+    fconfig = paramTypeMapping.body(fconfig, paramValue);
+  }
 
-  return { ...params, fetchConfigs: newConfigs };
+  // In the case where we have query parameters, append them to the url
+  if (Object.keys(fconfig.query).length) {
+    fconfig.url += `?${qs.stringify(fconfig.query)}`;
+  }
+
+  return fconfig;
 }
 
 function getParamValue(serverUrl, inputObj, absSpecFilePath) {
@@ -235,8 +293,13 @@ function updateExampleObject(responseStatusObj, exampleName, key, value) {
   }
 }
 
-function getPathsToIgnore(apiResponses, statusCode) {
+function getResponsePropertyPathsToIgnore(apiResponses, statusCode) {
   return apiResponses[statusCode] && apiResponses[statusCode][IGNORE_PROPERTY_PROP_NAME];
+}
+
+function returnExitCode(params) {
+  const { hasErrors } = params;
+  return hasErrors ? 1 : 0;
 }
 
 function readJsonFile(fileName) {
@@ -253,17 +316,19 @@ function writeJsonFile(fileName, data, config) {
 
 function getLogAndConfig(commandName, cmd) {
   const { configureLogger } = require('./logger');
-  const log = configureLogger({ logLevel: cmd.verbose ? 'debug' : 'info', silent: Boolean(cmd.quiet) });
+  const log = configureLogger({ logLevel: cmd.verbose ? 'verbose' : 'info', silent: Boolean(cmd.quiet) });
   log.debug('command args', cmd);
 
   // Read the default config file
-  const config = require('./defaultConfig')[commandName];
+  const defaultConfig = require('./defaultConfig');
+  const config = { ...defaultConfig[commandName], ...defaultConfig.global };
 
   // If a config file has been specified, try to merge it into the defaultConfig
   if (cmd.config) {
     try {
       const merge = require('lodash/merge');
-      merge(config, require(join(process.cwd(), cmd.config))[commandName]);
+      const externalConfig = require(join(process.cwd(), cmd.config));
+      merge(config, { ...externalConfig[commandName], ...externalConfig.global });
     } catch (err) {
       log.error('Could not load specified config file', err);
     }
@@ -316,17 +381,26 @@ function getAbsSpecFilePath(specFile) {
   return join(process.cwd(), dirname(specFile));
 }
 
+// Hacky way to clone JSON data
+function cloneDeep(obj) {
+  return JSON.parse(JSON.stringify(obj));
+}
+
 module.exports = {
   addParamsToFetchConfig,
+  concurrentFunctionProcessor,
+  cloneDeep,
   getAbsSpecFilePath,
   getExampleObject,
   getFetchConfigForAPIEndpoints,
   getLogAndConfig,
-  getPathsToIgnore,
+  getPathsToIgnore: getResponsePropertyPathsToIgnore,
   pipe,
   readJsonFile,
+  returnExitCode,
   traverse,
   updateExampleObject,
   writeJsonFile,
   writeOutputFile,
+  IGNORE_ENDPOINT_NAME,
 };

@@ -64,7 +64,8 @@
                   {
                     "value": null
                   }
-                ]
+                ],
+                "responseFile": "../fixtures/output/mocks/GET_posts-200_DEFAULT.json"
               }
             }
           }
@@ -104,14 +105,16 @@
                   {
                     "value": "1"
                   }
-                ]
+                ],
+                "responseFile": "../fixtures/output/mocks/GET_posts_{id}-200_DEFAULT_id_1.json"
               },
               "id_2": {
                 "parameters": [
                   {
                     "value": "2"
                   }
-                ]
+                ],
+                "responseFile": "../fixtures/output/mocks/GET_posts_{id}-200_id_2_diff.json"
               }
             }
           },
@@ -130,7 +133,8 @@
                   {
                     "value": "wrong-param"
                   }
-                ]
+                ],
+                "responseFile": "../fixtures/output/mocks/GET_posts_{id}-404_DEFAULT_badParam.json"
               }
             }
           }

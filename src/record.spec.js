@@ -1,5 +1,6 @@
 /* eslint-disable @getify/proper-arrows/where */
 const {
+  fetchResponses,
   getExistingResponseFileData,
   validateResponses,
   writeResponses,
@@ -8,6 +9,30 @@ const {
 const { getAbsSpecFilePath } = require('./utils');
 
 describe('record', () => {
+  describe('fetchResponses()', () => {
+    it('should send up to 15 concurrent requests', async () => {
+      const mockEndpointRequestFn = jest.fn();
+      const params = {
+        fetchConfigs: [...'x'.repeat(31)], // Pretend there are 31 endpoints to call
+        config: {
+          simultaneousRequests: 15,
+        },
+        endpointRequestFn: mockEndpointRequestFn,
+      };
+
+      await fetchResponses(params);
+      expect(mockEndpointRequestFn).toHaveBeenCalledTimes(31);
+      expect(mockEndpointRequestFn).nthCalledWith(1, expect.objectContaining({ counter: 1, total: 31 }));
+      expect(mockEndpointRequestFn).nthCalledWith(15, expect.objectContaining({ counter: 15 }));
+      expect(mockEndpointRequestFn).nthCalledWith(16, expect.objectContaining({ counter: 16 }));
+      expect(mockEndpointRequestFn).nthCalledWith(30, expect.objectContaining({ counter: 30 }));
+      expect(mockEndpointRequestFn).nthCalledWith(31, expect.objectContaining({ counter: 31 }));
+      // In the previous version of this algorithm, requests were sent in batches, so
+      // it was easier to verify that the test worked as per the description.
+      // Now that there is a concurrency limit, we cannot tell when we've hit the limit
+    });
+  });
+
   describe('validateResponses()', () => {
     it('should discard responses where the expected status code does not match the actual status code', () => {
       const responses = [

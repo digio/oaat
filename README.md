@@ -11,6 +11,10 @@ Open API Spec documentation and mocking tool with support for deploying the API 
 
 - [Installation](#installation)
 - [Usage](#usage)
+- [Recording](#recording)
+- [Linting](#linting)
+- [Building](#building)
+- [Comparing](#comparing)
 - [Config file](#config-file)
 
 ## Installation
@@ -29,7 +33,7 @@ amuck --help
 This tool does 4 things:
 - `amuck record` records API responses to requests specified in `x-examples` fields in an OpenAPI 3.x spec file.
 - `amuck lint` lints an OpenAPI 3.x spec file (basic formatting; tools like [speccy](https://www.npmjs.com/package/speccy) provide more capability, but don't do formatting).
-- `amuck build` creates an OpenAPI 3.x spec file with [API Gateway][api-gateway-url] headers, with either mock responses or pointing to an actual API.
+- `amuck build` creates an OpenAPI 3.x spec file with [API Gateway][api-gateway-url] headers, optionally with mock responses for the APIs.
 - `amuck deploy` deploys an OpenAPI 3.x spec file that has the API Gateway headers to API Gateway
 - `amuck compare` compares the earlier-recorded responses to the last responses for endpoints in an OpenAPI 3.x spec file.
 
@@ -70,7 +74,8 @@ child-property example-name for `x-examples`.
 Each example-object can have the following properties:
 
 - `parameters` - optional
-- `responseFile` - required
+- `requestBody` - optional
+- `responseFile` - generated when recording a response
 
 #### `x-examples[exampleName].parameters`
 
@@ -183,6 +188,47 @@ The above JavaScript module exports an async function which returns an object as
 The `queueWrapper()` function is there to combine multiple requests into a single request, in scenarios where
 multiple endpoint-examples require the same async-value. 
 
+### Disabling endpoint recording
+
+Sometimes it may be necessary to disable the recording of certain endpoints, while keeping the endpoint in the spec.
+
+#### Disable entire endpoint (all responses)
+
+Add the field `paths[path][method].x-ignore` with a value of `true` to disable the recording (and comparing) of this endpoint. 
+
+#### Disable a single endpoint response
+
+Add the field `paths[path][method].responses[status].x-ignore` with a value of `true` to disable the recording (and comparing) of this endpoint response.
+
+### Ignoring changes to certain fields - `path.method.responses.statusCode["x-test-ignore-paths"]`
+
+The `x-test-ignore-paths` property is an array of paths (in Lodash path format ([see example](https://lodash.com/docs/4.17.15#zipObjectDeep))) to be **ignored**.
+
+For example, the `foo.correlationId` property may change in every request. When comparing a new request
+against the mock-file, the objects will never match. To overcome this, we can use the `x-test-ignore-paths`
+property to ignore this field when comparing the response to the mock-file:
+
+```json
+"paths": {
+  "/foo/bar": {
+    "get": {
+      "summary": "Get foo's bars",
+      "produces": ["application/json"],
+      "parameters": [],
+      "responses": {
+        "200": {
+          "schema": {
+            "$ref": "#/definitions/Cart"
+          },
+          "x-test-ignore-paths": [
+            "foo.correlationId"
+          ]
+        }
+      }
+    }
+  }
+}
+```
 
 ## Linting
 
@@ -213,55 +259,50 @@ Options:
   -h, --help           display help for command
 ```
 
-## Adding API-Gateway extensions and Swagger UI to 
+See the [configuration file](config-file) for further options.
 
+## Building
 
-## 3. Generate swagger UI webpage beside the mock API
+Creates an OpenAPI 3.x spec file with [API Gateway][api-gateway-url] headers, optionally with mock responses for the APIs.
 
-The `yarn docs:generate` task, as part of building the mock swagger file, adds
-a new endpoint `GET /`, which returns HTML.
+### Command
 
-### Approach
+```shell script
+$ amuck lint --help
+Usage: amuck build [options] <jsonFile> <outputJsonFile> [serverUrl]
 
-1. Create new `GET /` endpoint in swagger under `paths`, with config that works with API Gateway
-1. Read the `swagger/web/index.html` file into memory.
-1. Replace the template-variable inside the HTML string with a stringified swagger document.
-1. Store the result as the response for the `GET /` endpoint.
+Adds custom headers & Swagger UI endpoint to allow deployment of spec file to AWS API Gateway with documentation
 
-## 4. Generate Tests from Swagger JSON
-
-Mock files can be used as test-snapshots. To support this capability, an additional custom property is required.
-
-### `path.method.responses.statusCode["x-test-ignore-paths"]`
-
-The `x-test-ignore-paths` property is an array of paths (in Lodash path format ([see example](https://lodash.com/docs/4.17.15#zipObjectDeep))) to be **ignored**.
-
-For example, the `foo.correlationId` property may change in every request. When comparing a new request
-against the mock-file, the objects will never match. To overcome this, we can use the `x-test-ignore-paths`
-property to ignore this field when comparing the response to the mock-file:
-
-```json
-"paths": {
-  "/foo/bar": {
-    "get": {
-      "summary": "Get foo's bars",
-      "produces": ["application/json"],
-      "parameters": [],
-      "responses": {
-        "200": {
-          "schema": {
-            "$ref": "#/definitions/Cart"
-          },
-          "x-test-ignore-paths": [
-            "foo.correlationId"
-          ]
-        }
-      }
-    }
-  }
-}
+Options:
+  -c, --config <file>  Config file to override default config
+  -m, --mock           Uses the recorded responses as mock responses
+  -q, --quiet          No logging
+  -v, --verbose        Verbose logging
+  -d, --dry-run        Dry run (no changes made)
+  -h, --help           display help for command
 ```
 
+## Comparing
+
+Compares the earlier-recorded responses to the last responses for endpoints in an OpenAPI 3.x spec file.
+This command can be used to do integration testing, by treating the recorded responses as
+snapshots, and comparing those to the latest responses.
+
+### Command
+
+```shell script
+$ amuck lint --help
+Usage: amuck compare [options] <jsonFile> <outputJsonFile> [serverUrl]
+
+Adds custom headers & Swagger UI endpoint to allow deployment of spec file to AWS API Gateway with documentation
+
+Options:
+  -c, --config <file>        Config file to override default config
+  -m, --compare-mode <mode>  Compares by "value" (default), "type"
+  -q, --quiet                No logging
+  -v, --verbose              Verbose logging
+  -h, --help                 display help for command
+```
 
 ## Config file
 
@@ -271,6 +312,12 @@ The config file can be JSON or a CommonJS module which exports an object.
 Example:
 ``` js
 module.exports = {
+  // Shared configuration for all commands
+  global: {
+    // The number of simultaneous requests HTTP requests to make. Increasing this value
+    // can lead to inconsistent results.
+    simultaneousRequests: 15,
+  },
 
   // Configuration for the `amuck record` command:
   record: {

@@ -4,20 +4,21 @@ const { compareResponseData, compareByType } = require('./compare');
 describe('compareByType()', () => {
   it('should compare two objects and return true if the have the same shape AND type', () => {
     // Equal
-    expect(compareByType({ a: '1' }, { a: '1' })).toEqual(true);
-    expect(compareByType({ a: '1' }, { a: '2' })).toEqual(true);
-    expect(compareByType({ a: { b: '2' } }, { a: { b: 'xyz' } })).toEqual(true);
-    expect(compareByType({ a: [1, 2, 3] }, { a: [1, 2, 3] })).toEqual(true);
-    expect(compareByType({ a: ['cat', 'bird'] }, { a: ['fish', 'dog'] })).toEqual(true);
-    expect(compareByType({ a: [{ b: 'cat' }] }, { a: [{ b: 'bird' }] })).toEqual(true);
-    expect(compareByType({ a: [{ b: ['cat'] }] }, { a: [{ b: ['bird'] }] })).toEqual(true);
+    expect(compareByType({ objA: { a: '1' }, objB: { a: '1' } })).toEqual(true);
+    expect(compareByType({ objA: { a: '1' }, objB: { a: '2' } })).toEqual(true);
+    expect(compareByType({ objA: { a: { b: '2' } }, objB: { a: { b: 'xyz' } } })).toEqual(true);
+    expect(compareByType({ objA: { a: [1, 2, 3] }, objB: { a: [1, 2, 3] } })).toEqual(true);
+    expect(compareByType({ objA: { a: ['cat', 'bird'] }, objB: { a: ['fish', 'dog'] } })).toEqual(true);
+    expect(compareByType({ objA: { a: [{ b: 'cat' }] }, objB: { a: [{ b: 'bird' }] } })).toEqual(true);
+    expect(compareByType({ objA: { a: [{ b: ['cat'] }] }, objB: { a: [{ b: ['bird'] }] } })).toEqual(true);
     //
     // // Not equal
-    expect(compareByType({ a: 1 }, { a: '1' })).toEqual(false);
-    expect(compareByType({ a: { b: '2' } }, { a: {} })).toEqual(false);
-    expect(compareByType({ a: [1, 2] }, { a: [1, 2, 3] })).toEqual(false);
-    expect(compareByType({ a: [{ b: 'cat' }] }, { a: [{ b: 'bird', c: 1 }] })).toEqual(false);
-    expect(compareByType({ a: [{ b: ['cat'] }] }, { a: [{ b: ['cat', 'fish'] }] })).toEqual(false);
+    const showDiff = false;
+    expect(compareByType({ objA: { a: 1 }, objB: { a: '1' }, showDiff })).toEqual(false);
+    expect(compareByType({ objA: { a: { b: '2' } }, objB: { a: {} }, showDiff })).toEqual(false);
+    expect(compareByType({ objA: { a: [1, 2] }, objB: { a: [1, 2, 3] }, showDiff })).toEqual(false);
+    expect(compareByType({ objA: { a: [{ b: 'cat' }] }, objB: { a: [{ b: 'bird', c: 1 }] }, showDiff })).toEqual(false);
+    expect(compareByType({ objA: { a: [{ b: ['cat'] }] }, objB: { a: [{ b: ['cat', 'fish'] }] }, showDiff })).toEqual(false);
   });
 });
 
@@ -56,8 +57,7 @@ describe('compareResponseData()', () => {
       response: { b: { c: 123456 }, a: 'foo' },
       apiEndpoint: {
         responses: {
-          200: {
-          },
+          200: {},
         },
       },
     };

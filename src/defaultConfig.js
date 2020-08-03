@@ -1,4 +1,7 @@
 module.exports = {
+  global: {
+    simultaneousRequests: 15,
+  },
   record: {
     responseBasePath: 'responses/', // Allows the responses to be removed, if the only files in this directory are mock files
     removeUnusedResponses: true,

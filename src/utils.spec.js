@@ -427,6 +427,120 @@ describe('utils', () => {
         },
       ]);
     });
+
+    it('should ignore entire endpoints that have a truthy x-ignore property', () => {
+      const input = {
+        paths: {
+          '/api/{p1}': {
+            post: {
+              'x-ignore': true,
+              parameters: [
+                {
+                  name: 'p1',
+                  in: 'path',
+                  description: 'First param',
+                  required: true,
+                  schema: {
+                    type: 'string',
+                  },
+                },
+              ],
+              requestBody: {
+                content: {
+                  'application/json': {
+                    schema: {
+                      $ref: '#/components/schemas/Info',
+                    },
+                  },
+                },
+              },
+              responses: {
+                '400': {
+                  'x-examples': {
+                    myExample: {
+                      requestBody: { value: 'foo' },
+                      parameters: [{ script: 'bar' }],
+                    },
+                  },
+                  description: 'Error response',
+                },
+              },
+            },
+          },
+        },
+      };
+
+      const { fetchConfigs } = getFetchConfigForAPIEndpoints({ specObj: input, serverUrl: 'https://example.com/' });
+      expect(fetchConfigs).toEqual([]);
+    });
+
+    it('should ignore endpoint responses that have a truthy x-ignore property', () => {
+      const input = {
+        paths: {
+          '/api/{p1}': {
+            post: {
+              parameters: [
+                {
+                  name: 'p1',
+                  in: 'path',
+                  description: 'First param',
+                  required: true,
+                  schema: {
+                    type: 'string',
+                  },
+                },
+              ],
+              requestBody: {
+                content: {
+                  'application/json': {
+                    schema: {
+                      $ref: '#/components/schemas/Info',
+                    },
+                  },
+                },
+              },
+              responses: {
+                '200': {
+                  'x-ignore': true,
+                  'x-examples': {
+                    myExample: {
+                      requestBody: { value: 'foo' },
+                      parameters: [{ script: 'bar' }],
+                    },
+                  },
+                  description: 'Success response',
+                },
+                '400': {
+                  'x-examples': {
+                    myExample: {
+                      requestBody: { value: 'foo' },
+                      parameters: [{ script: 'bar' }],
+                    },
+                  },
+                  description: 'Error response',
+                },
+              },
+            },
+          },
+        },
+      };
+
+      const { fetchConfigs } = getFetchConfigForAPIEndpoints({ specObj: input, serverUrl: 'https://example.com/' });
+      expect(fetchConfigs).toEqual([
+        {
+          path: '/api/{p1}',
+          query: {},
+          url: '/api/{p1}',
+          config: { method: 'post' },
+          apiEndpoint: input.paths['/api/{p1}'].post,
+          expectedStatusCode: 400,
+          existingResponseFile: undefined,
+          ignorePathsList: [],
+          exampleName: 'myExample',
+          exampleIndex: 0,
+        },
+      ]);
+    });
   });
 
   describe('addParamsToFetchConfig()', () => {
@@ -451,8 +565,13 @@ describe('utils', () => {
           exampleIndex: 0,
         },
       ];
+      const config = { simultaneousRequests: 15 };
 
-      const { fetchConfigs } = await addParamsToFetchConfig({ fetchConfigs: input, serverUrl: 'https://example.com/' });
+      const { fetchConfigs } = await addParamsToFetchConfig({
+        fetchConfigs: input,
+        serverUrl: 'https://example.com/',
+        config,
+      });
       expect(fetchConfigs).toEqual([
         {
           path: '/api',
@@ -505,14 +624,72 @@ describe('utils', () => {
           exampleIndex: 0,
         },
       ];
+      const config = { simultaneousRequests: 15 };
 
-      const { fetchConfigs } = await addParamsToFetchConfig({ fetchConfigs: input, serverUrl: 'https://example.com/' });
+      const { fetchConfigs } = await addParamsToFetchConfig({
+        fetchConfigs: input,
+        serverUrl: 'https://example.com/',
+        config,
+      });
       expect(fetchConfigs).toEqual([
         expect.objectContaining({
           path: '/api/{p1}',
           query: {},
           url: '/api/foo',
           config: { method: 'get' },
+        }),
+      ]);
+    });
+
+    it('should add parameters for a GET endpoint with a single header parameter with an example that comes from a "value"', async () => {
+      const input = [
+        {
+          path: '/api',
+          query: {},
+          url: '/api',
+          config: { method: 'get' },
+          apiEndpoint: {
+            parameters: [
+              {
+                name: 'authorization',
+                in: 'header',
+                required: true,
+                schema: {
+                  type: 'string',
+                },
+              },
+            ],
+            responses: {
+              '200': {
+                description: 'Successful Operation',
+                'x-examples': {
+                  default: {
+                    parameters: [{ value: 'Bearer codesdfslk' }],
+                  },
+                },
+              },
+            },
+          },
+          expectedStatusCode: 200,
+          existingResponseFile: undefined,
+          ignorePathsList: [],
+          exampleName: 'default',
+          exampleIndex: 0,
+        },
+      ];
+      const config = { simultaneousRequests: 15 };
+
+      const { fetchConfigs } = await addParamsToFetchConfig({
+        fetchConfigs: input,
+        serverUrl: 'https://example.com/',
+        config,
+      });
+      expect(fetchConfigs).toEqual([
+        expect.objectContaining({
+          path: '/api',
+          query: {},
+          url: '/api',
+          config: { method: 'get', headers: { authorization: 'Bearer codesdfslk' } },
         }),
       ]);
     });
@@ -571,8 +748,13 @@ describe('utils', () => {
           exampleIndex: 0,
         },
       ];
+      const config = { simultaneousRequests: 15 };
 
-      const { fetchConfigs } = await addParamsToFetchConfig({ fetchConfigs: input, serverUrl: 'https://example.com/' });
+      const { fetchConfigs } = await addParamsToFetchConfig({
+        fetchConfigs: input,
+        serverUrl: 'https://example.com/',
+        config,
+      });
       expect(fetchConfigs).toEqual([
         expect.objectContaining({
           path: '/api/{p1}',
@@ -632,8 +814,12 @@ describe('utils', () => {
           exampleIndex: 0,
         },
       ];
-
-      const { fetchConfigs } = await addParamsToFetchConfig({ fetchConfigs: input, serverUrl: 'https://example.com/' });
+      const config = { simultaneousRequests: 15 };
+      const { fetchConfigs } = await addParamsToFetchConfig({
+        fetchConfigs: input,
+        serverUrl: 'https://example.com/',
+        config,
+      });
       expect(fetchConfigs).toEqual([
         expect.objectContaining({
           path: '/api/{p1}',
@@ -700,10 +886,12 @@ describe('utils', () => {
         },
       ];
       const absSpecFilePath = '../fixtures';
+      const config = { simultaneousRequests: 15 };
       const { fetchConfigs } = await addParamsToFetchConfig({
         fetchConfigs: input,
         serverUrl: 'https://example.com/',
         absSpecFilePath,
+        config,
       });
       expect(fetchConfigs).toEqual([
         expect.objectContaining({
@@ -727,6 +915,7 @@ describe('utils', () => {
       expect(config).toEqual({
         dryRun: false,
         outputFile: undefined,
+        simultaneousRequests: 15,
         sortComponentsAlphabetically: true,
         sortPathsAlphabetically: true,
         syncExamples: true,
@@ -745,6 +934,7 @@ describe('utils', () => {
         responseFilenameFn: expect.any(Function),
         outputFile: undefined,
         removeUnusedResponses: true,
+        simultaneousRequests: 15,
         updateResponseWhenInexactMatch: true,
         updateResponseWhenTypesMatch: true,
       });
@@ -764,6 +954,7 @@ describe('utils', () => {
         responseFilenameFn: expect.any(Function),
         outputFile: undefined,
         removeUnusedResponses: false, // <-- from altConfig.js
+        simultaneousRequests: 15,
         updateResponseWhenInexactMatch: true,
         updateResponseWhenTypesMatch: true,
       });

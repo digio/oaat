@@ -4,6 +4,7 @@ const fetch = require('node-fetch');
 const logger = require('winston');
 const {
   pipe,
+  concurrentFunctionProcessor,
   getAbsSpecFilePath,
   getExampleObject,
   updateExampleObject,
@@ -39,43 +40,63 @@ function recordCommand(specFile, server, config) {
   pipeline({ specObj, serverUrl, destPath, specFile, absSpecFilePath, config });
 }
 
+/**
+ * To avoid overwhelming the fetch API, we need to make requests in batches.
+ * @param params
+ * @return {Promise<{responses: []}>}
+ */
 async function fetchResponses(params) {
-  const { fetchConfigs, serverUrl, fetcher = fetch } = params;
-  logger.info(`Making ${fetchConfigs.length} requests...`);
-  logger.debug('Params', params.config);
+  const { fetchConfigs, serverUrl, config, endpointRequestFn = callEndpoint } = params;
+  const maxSimultaneousRequests = config.simultaneousRequests || 10;
 
-  const responses = await Promise.all(
-    fetchConfigs.map(({ path, url, config, apiEndpoint, expectedStatusCode, exampleName, exampleIndex }) => {
-      const endPointUrl = `${serverUrl}${url}`;
-      logger.debug(`Fetching ${endPointUrl} ${config.method}`);
-
-      return fetcher(endPointUrl, config)
-        .then(async (res) => {
-          const json = await res.json();
-          return { statusCode: res.status, json };
-        })
-        .then((res) => {
-          logger.debug(endPointUrl, config.method, 'Responded', res.statusCode);
-          return {
-            path,
-            url,
-            config,
-            expectedStatusCode,
-            statusCode: res.statusCode,
-            response: res.json,
-            apiEndpoint,
-            exampleName,
-            exampleIndex,
-          };
-        })
-        .catch((err) => {
-          logger.error(endPointUrl, 'had an error', err);
-          return { error: err, apiEndpoint };
-        });
-    }),
+  const responses = await concurrentFunctionProcessor(
+    fetchConfigs.map((item) => (counter, total) => endpointRequestFn({ ...item, serverUrl, counter, total })),
+    maxSimultaneousRequests,
   );
 
   return { ...params, responses };
+}
+
+function callEndpoint(params) {
+  const {
+    path,
+    url,
+    config,
+    apiEndpoint,
+    expectedStatusCode,
+    exampleName,
+    exampleIndex,
+    serverUrl,
+    counter,
+    total,
+    fetcher = fetch,
+  } = params;
+  const endPointUrl = `${serverUrl}${url}`;
+  logger.info(`Fetching ${counter} of ${total}: ${endPointUrl} ${config.method}`);
+
+  return fetcher(endPointUrl, config)
+    .then(async (res) => {
+      const json = await res.json();
+      return { statusCode: res.status, json };
+    })
+    .then((res) => {
+      logger.debug(endPointUrl, config.method, 'Responded', res.statusCode);
+      return {
+        path,
+        url,
+        config,
+        expectedStatusCode,
+        statusCode: res.statusCode,
+        response: res.json,
+        apiEndpoint,
+        exampleName,
+        exampleIndex,
+      };
+    })
+    .catch((err) => {
+      logger.error(endPointUrl, 'had an error', err);
+      return { error: err, apiEndpoint };
+    });
 }
 
 function validateResponses(params) {
@@ -252,8 +273,6 @@ function findInDir(dir, filterFn, fileList = []) {
   return fileList;
 }
 
-
-
 function lintSpecFile(params) {
   if (params.config.andLint) {
     params = lintSpec(params);
@@ -262,6 +281,7 @@ function lintSpecFile(params) {
 }
 
 module.exports = {
+  fetchResponses,
   getExistingResponseFileData,
   recordCommand,
   validateResponses,
