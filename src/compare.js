@@ -18,17 +18,17 @@ const {
   validateSpecObj,
 } = require('./utils');
 
-function compareCommand(specFile, server, config) {
+async function compareCommand(specFile, server, config) {
   // Read the spec file outside of the pipeline, so that we can inject it (and re-write it)
   // at the end. Not very functional, but easier than passing the data all the way down the pipe.
   const specObj = readJsonFile(specFile);
+  const { openapi } = await validateSpecObj({ specObj }); // We have to validate before we try to read the file cntents
   const absSpecFilePath = getAbsSpecFilePath(specFile);
   const destPath = getAbsSpecFilePath(config.outputFile ? config.outputFile : specFile);
   const serverUrl = server || specObj.servers[0].url;
 
   // define the data processing pipeline
   const pipeline = pipe(
-    validateSpecObj, // Adds openapi property
     getFetchConfigForAPIEndpoints,
     addParamsToFetchConfig,
     fetchResponses,
@@ -38,7 +38,7 @@ function compareCommand(specFile, server, config) {
     returnExitCode,
   );
 
-  return pipeline({ specObj, serverUrl, destPath, specFile, absSpecFilePath, config });
+  return pipeline({ openapi, specObj, serverUrl, destPath, specFile, absSpecFilePath, config });
 }
 
 /**

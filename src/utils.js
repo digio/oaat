@@ -389,10 +389,11 @@ function cloneDeep(obj) {
 
 async function validateSpecObj(params) {
   const { specObj } = params;
-  const [openapi, error] = Enforcer.v3_0.OpenApi(await Enforcer.dereference(specObj));
+  const [openapi, error] = Enforcer.v3_0.OpenApi(await Enforcer.dereference(cloneDeep(specObj)));
 
   if (error) {
-    throw error;
+    // The default error from Enforcer is a weird object
+    throw new Error(error.toString());
   }
 
   return { ...params, openapi };

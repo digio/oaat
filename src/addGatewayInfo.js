@@ -7,6 +7,7 @@ const {
   getExampleObject,
   readJsonFile,
   traverse,
+  validateSpecObj,
   writeOutputFile,
 } = require('./utils');
 const cloneDeep = require('lodash/cloneDeep');
@@ -18,8 +19,9 @@ const WEB_PAGE_LOGO_TOKEN = '$$_logoUrl_$$';
 const WEB_PAGE_TITLE = '$$_title_$$';
 const WEB_PAGE_FAVICON_HREF = '$$_faviconHref_$$';
 
-function addGatewayInfo(specFile, server, config) {
+async function addGatewayInfo(specFile, server, config) {
   const specObj = readJsonFile(specFile);
+  await validateSpecObj({ specObj }); // We have to validate before we try to read the file cntents
   const absSpecFilePath = getAbsSpecFilePath(specFile);
   const serverUrl = server || specObj.servers[0].url;
 
@@ -43,7 +45,7 @@ function addGatewayInfo(specFile, server, config) {
     },
   );
 
-  pipeline({ specObj, serverUrl, specFile, absSpecFilePath, config });
+  return pipeline({ specObj, serverUrl, specFile, absSpecFilePath, config });
 }
 
 function setServerUrl(params) {

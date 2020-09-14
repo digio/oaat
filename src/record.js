@@ -11,22 +11,25 @@ const {
   getFetchConfigForAPIEndpoints,
   addParamsToFetchConfig,
   readJsonFile,
+  validateSpecObj,
   writeJsonFile,
   writeOutputFile,
 } = require('./utils');
 const { lintSpec } = require('./lint');
 const { compareResponseData } = require('./compare');
 
-function recordCommand(specFile, server, config) {
+async function recordCommand(specFile, server, config) {
   // Read the spec file outside of the pipeline, so that we can inject it (and re-write it)
   // at the end. Not very functional, but easier than passing the data all the way down the pipe.
   const specObj = readJsonFile(specFile);
+  await validateSpecObj({ specObj }); // We have to validate before we try to read the file cntents
   const absSpecFilePath = getAbsSpecFilePath(specFile);
   const destPath = getAbsSpecFilePath(config.outputFile ? config.outputFile : specFile);
   const serverUrl = server || specObj.servers[0].url;
 
   // define the data processing pipeline
   const pipeline = pipe(
+    validateSpecObj,
     getFetchConfigForAPIEndpoints,
     addParamsToFetchConfig,
     fetchResponses,
@@ -37,7 +40,7 @@ function recordCommand(specFile, server, config) {
     writeOutputFile,
   );
 
-  pipeline({ specObj, serverUrl, destPath, specFile, absSpecFilePath, config });
+  return pipeline({ specObj, serverUrl, destPath, specFile, absSpecFilePath, config });
 }
 
 /**

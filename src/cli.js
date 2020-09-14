@@ -14,12 +14,12 @@ program
   .option('-q, --quiet', 'no logging')
   .option('-v, --verbose', 'verbose logging')
   // eslint-disable-next-line @getify/proper-arrows/where
-  .action((jsonFile, cmd) => {
+  .action(async (jsonFile, cmd) => {
     const { log, config } = getLogAndConfig('lint', cmd);
 
     const { lintCommand } = require('./lint');
     try {
-      lintCommand(jsonFile, config);
+      await lintCommand(jsonFile, config);
     } catch (err) {
       log.error(err);
     }
@@ -36,14 +36,15 @@ program
   .option('-v, --verbose', 'Verbose logging')
   .option('-d, --dry-run', 'Dry run (no changes made)')
   // eslint-disable-next-line @getify/proper-arrows/where
-  .action((jsonFile, serverUrl, cmd) => {
+  .action(async (jsonFile, serverUrl, cmd) => {
     const { log, config } = getLogAndConfig('record', cmd);
     log.debug(`command args: ${jsonFile}`);
 
     const { recordCommand } = require('./record');
     try {
-      recordCommand(jsonFile, serverUrl, config);
+      await recordCommand(jsonFile, serverUrl, config);
     } catch (err) {
+      // console.error(err);
       log.error(err);
     }
   });
@@ -60,7 +61,7 @@ program
   .option('-v, --verbose', 'Verbose logging')
   .option('-d, --dry-run', 'Dry run (no changes made)')
   // eslint-disable-next-line @getify/proper-arrows/where
-  .action((jsonFile, outputJsonFile, serverUrl, cmd) => {
+  .action(async (jsonFile, outputJsonFile, serverUrl, cmd) => {
     // Merge the outputJsonFile into the config.outputFile property,
     // so we can reuse the pathing logic there
     const { log, config } = getLogAndConfig('build', { ...cmd, output: outputJsonFile });
@@ -72,7 +73,7 @@ program
 
     const { addGatewayInfo } = require('./addGatewayInfo');
     try {
-      addGatewayInfo(jsonFile, serverUrl, config);
+      await addGatewayInfo(jsonFile, serverUrl, config);
     } catch (err) {
       log.error(err);
     }

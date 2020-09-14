@@ -92,6 +92,17 @@ describe('CLI', () => {
         ]
       `);
     });
+
+    it('should display an error when the spec is not valid', async () => {
+      const result = await runCommand(`lint ./fixtures/invalidSpecV2.json`);
+
+      expect(result).toMatchInlineSnapshot(`
+        "[31merror[39m: One or more errors exist in the OpenApi definition
+          Property not allowed: swagger
+          Missing required property: openapi
+        "
+      `);
+    });
   });
 
   describe('record', () => {
@@ -135,6 +146,17 @@ describe('CLI', () => {
         [34minfo[39m: Creating response file GET_posts_{id}-200_DEFAULT_id_1.json
         [34minfo[39m: Creating response file GET_posts_{id}-200_id_2.json
         [34minfo[39m: Creating response file GET_posts_{id}-404_DEFAULT_badParam.json
+        "
+      `);
+    });
+
+    it('should display an error when the spec is not valid', async () => {
+      const result = await runCommand(`record ./fixtures/invalidSpecV2.json`);
+
+      expect(result).toMatchInlineSnapshot(`
+        "[31merror[39m: One or more errors exist in the OpenApi definition
+          Property not allowed: swagger
+          Missing required property: openapi
         "
       `);
     });
@@ -196,6 +218,17 @@ describe('CLI', () => {
         ]
       `);
     });
+
+    it('should display an error when the spec is not valid', async () => {
+      const result = await runCommand(`build ./fixtures/invalidSpecV2.json foo.txt`);
+
+      expect(result).toMatchInlineSnapshot(`
+        "[31merror[39m: One or more errors exist in the OpenApi definition
+          Property not allowed: swagger
+          Missing required property: openapi
+        "
+      `);
+    });
   });
 
   describe('compare', () => {
@@ -210,6 +243,17 @@ describe('CLI', () => {
         [31merror[39m: Expected 400 but received 200: /posts/2
         [34minfo[39m: Comparing by VALUE
         [31merror[39m: ❌ Differences were detected
+        "
+      `);
+    });
+
+    it('should display an error when the spec is not valid', async () => {
+      const result = await runCommand(`compare ./fixtures/invalidSpecV2.json foo.txt`);
+
+      expect(result).toMatchInlineSnapshot(`
+        "[31merror[39m: One or more errors exist in the OpenApi definition
+          Property not allowed: swagger
+          Missing required property: openapi
         "
       `);
     });
@@ -237,19 +281,19 @@ describe('CLI', () => {
           [34minfo[39m: Fetching 4 of 4: https://jsonplaceholder.typicode.com/posts/wrong-param get
           [34minfo[39m: Comparing by VALUE
           [31merror[39m: /posts/2
-          [32m- Expected[39m
-          [31m+ Received[39m
+          - Expected
+          + Received
 
-          [2m  Object {[22m
-          [2m    \\"body\\": \\"est rerum tempore vitae[22m
-          [2m  sequi sint nihil reprehenderit dolor beatae ea dolores neque[22m
-          [2m  fugiat blanditiis voluptate porro vel nihil molestiae ut reiciendis[22m
-          [2m  qui aperiam non debitis possimus qui neque nisi nulla\\",[22m
-          [2m    \\"id\\": 2,[22m
-          [32m-   \\"title\\": \\"Non matching title\\",[39m
-          [31m+   \\"title\\": \\"qui est esse\\",[39m
-          [2m    \\"userId\\": 1,[22m
-          [2m  }[22m
+            Object {
+              \\"body\\": \\"est rerum tempore vitae
+            sequi sint nihil reprehenderit dolor beatae ea dolores neque
+            fugiat blanditiis voluptate porro vel nihil molestiae ut reiciendis
+            qui aperiam non debitis possimus qui neque nisi nulla\\",
+              \\"id\\": 2,
+          -   \\"title\\": \\"Non matching title\\",
+          +   \\"title\\": \\"qui est esse\\",
+              \\"userId\\": 1,
+            }
 
           [31merror[39m: ❌ Differences were detected
           "

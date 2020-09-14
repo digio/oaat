@@ -6,19 +6,20 @@ const {
   getFetchConfigForAPIEndpoints,
   getExampleObject,
   addParamsToFetchConfig,
+  validateSpecObj,
 } = require('./utils');
 const logger = require('winston');
 
-function lintCommand(specFile, config) {
+async function lintCommand(specFile, config) {
   const specObj = readJsonFile(specFile);
   const absSpecFilePath = getAbsSpecFilePath(specFile);
 
   // Read the file, lint it, write it
-  const pipeline = pipe(lintSpec, writeOutputFile, () => {
+  const pipeline = pipe(validateSpecObj, lintSpec, writeOutputFile, () => {
     logger.info('Linting complete.');
   });
 
-  pipeline({ specObj, specFile, absSpecFilePath, config });
+  return pipeline({ specObj, specFile, absSpecFilePath, config });
 }
 
 function lintSpec(params) {
