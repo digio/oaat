@@ -117,7 +117,7 @@ describe('Lint', () => {
                 },
               ],
               responses: {
-                '200': {
+                200: {
                   description: 'successful operation',
                   content: {
                     'application/json': {
@@ -191,7 +191,7 @@ describe('Lint', () => {
                 },
               },
               responses: {
-                '200': {
+                200: {
                   description: 'successful operation',
                   content: {
                     'application/json': {
@@ -276,7 +276,7 @@ describe('Lint', () => {
                 },
               },
               responses: {
-                '200': {
+                200: {
                   description: 'successful operation',
                   content: {
                     'application/json': {

@@ -4,6 +4,7 @@ const { writeFileSync } = require('fs');
 const logger = require('winston');
 const mkdirp = require('mkdirp');
 const pipe = require('p-pipe');
+const Enforcer = require('openapi-enforcer');
 
 const EXAMPLE_PROP_NAME = 'x-examples';
 const IGNORE_PROPERTY_PROP_NAME = 'x-test-ignore-paths';
@@ -44,7 +45,7 @@ function concurrentFunctionProcessor(fnArray, maxConcurrent = 15) {
       promises.push(
         Promise.resolve(data(counter, total)).finally(() => {
           inFlight--;
-          logger.debug('Promise resolved', inFlight, readableStream.readableLength);
+          logger.debug(`Promise resolved, ${inFlight}, ${readableStream.readableLength}`);
           readableStream.resume();
         }),
       );
@@ -386,6 +387,17 @@ function cloneDeep(obj) {
   return JSON.parse(JSON.stringify(obj));
 }
 
+async function validateSpecObj(params) {
+  const { specObj } = params;
+  const [openapi, error] = Enforcer.v3_0.OpenApi(await Enforcer.dereference(specObj));
+
+  if (error) {
+    throw error;
+  }
+
+  return { ...params, openapi };
+}
+
 module.exports = {
   addParamsToFetchConfig,
   concurrentFunctionProcessor,
@@ -400,6 +412,7 @@ module.exports = {
   returnExitCode,
   traverse,
   updateExampleObject,
+  validateSpecObj,
   writeJsonFile,
   writeOutputFile,
   IGNORE_ENDPOINT_NAME,

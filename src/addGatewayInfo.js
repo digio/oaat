@@ -205,7 +205,7 @@ function addSpecFileEndpoint(params) {
       summary: 'Open API Spec schema',
       parameters: [],
       responses: {
-        '200': {
+        200: {
           description: 'Successful Operation',
           content: {
             'application/json': {
@@ -269,7 +269,7 @@ function addWebsiteEndpoint(params) {
       'x-ignore': true,
       tags: ['meta'],
       responses: {
-        '200': {
+        200: {
           description: '200 response',
           content: {
             'text/html': {
@@ -346,7 +346,7 @@ function getCORSOptionsResponse() {
   return {
     options: {
       responses: {
-        '200': {
+        200: {
           description: '200 response',
           content: {
             'application/json': {

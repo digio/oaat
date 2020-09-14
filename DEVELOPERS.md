@@ -7,9 +7,10 @@ It also explains the basic mechanics of using `git` and `node`
 - [Project Organisation](#project-organisation)
 - [Installing NPM Modules](#installing)
 - [Running Tests](#running-tests)
-- [Testing with a Serverless project](#testing-with-a-serverless-project)
+- [Testing with another project](#testing-with-another-project)
 - [Formatting your Source Code](#formatting-your-source-code)
 - [Linting/verifying your Source Code](#lintingverifying-your-source-code)
+- [Semantic Release setup](#semantic-release-setup)
 
 See the [contribution guidelines][contributing] if you'd like to contribute to this project.
 
@@ -52,7 +53,7 @@ npm run test:watch
 npm run test:reportlist
 ```
 
-## Testing with a Serverless project
+## Testing with another project
 
 Use `npm link` to symlink this local package into your global NPM registry on your computer. It will
 then be available for use within other NPM projects:
@@ -60,19 +61,16 @@ then be available for use within other NPM projects:
 ```shell script
 # In this project root:
 npm link
-# > /.nvm/versions/node/v10.17.0/lib/node_modules/serverless-stage-env-vars -> /mydev/serverless/serverless-stage-env-vars
+# > /.nvm/versions/node/v10.17.0/lib/node_modules/oaat -> /mydev/serverless/oaat
 
-# Change to the Serverless project directory that wants to test this package
-cd ../my-serverless-proj
+# Change to the project directory that wants to test this package
+cd ../my-project
 
-# Create a local symlink to serverless-stage-env-vars
-npm link serverless-stage-env-vars
-# > Symlinking "/mydev/my-serverless-proj/node_modules"
-# >     --> "/.nvm/versions/node/v10.17.0/lib/node_modules/serverless-stage-env-vars"
+# Create a local symlink to oaat
+npm link oaat
+# > Symlinking "/mydev/my-project/node_modules"
+# >     --> "/.nvm/versions/node/v10.17.0/lib/node_modules/oaat"
 ```
-
-Inside the Serverless project that will test this plugin, modify the serverless config file
-to include the plugin and define the configuration object [see Usage][readme-usage].
 
 ## Formatting your source code
 
@@ -103,8 +101,32 @@ npm run verify
 npm run lint
 ```
 
+## Semantic Release Setup
+
+This section is include for informational purposes only.
+
+This repo uses [semantic-release][semantic-release] to manage software versions and packaging.
+**There is a one-time setup-step required - WHICH HAS ALREADY BEEN DONE**, which creates a GitHub
+personal access token, an NPM token, and connects them to Travis CI.
+
+One time setup:
+```shell script
+cd oaat
+npx semantic-release-cli setup
+
+? What is your npm registry? https://registry.npmjs.org/
+? What is your npm username? u_glow
+? What is your npm password? [hidden]
+? What is your GitHub username? uglow
+? What is your GitHub password? [hidden]
+? What is your GitHub two-factor authentication code? 
+? What CI are you using? Travis CI
+
+```
+
 <hr>
 
 [contributing]: CONTRIBUTING.md
-[repo]: https://github.com/digio/serverless-stage-env-vars
+[repo]: https://github.com/digio/oaat
 [readme-usage]: README.md#usage
+[semantic-release]: https://semantic-release.gitbook.io/semantic-release/

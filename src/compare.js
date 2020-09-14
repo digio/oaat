@@ -3,6 +3,7 @@ const isEqual = require('lodash/isEqual'); // I'm not a fan of Lodash, but this 
 const omit = require('lodash/omit'); // I'm not a fan of Lodash, but this will save a lot of time compared to re-implementing omit()
 const { fetchResponses, getExistingResponseFileData } = require('./record');
 const logger = require('winston');
+
 const {
   pipe,
   addParamsToFetchConfig,
@@ -14,6 +15,7 @@ const {
   readJsonFile,
   returnExitCode,
   traverse,
+  validateSpecObj,
 } = require('./utils');
 
 function compareCommand(specFile, server, config) {
@@ -26,6 +28,7 @@ function compareCommand(specFile, server, config) {
 
   // define the data processing pipeline
   const pipeline = pipe(
+    validateSpecObj, // Adds openapi property
     getFetchConfigForAPIEndpoints,
     addParamsToFetchConfig,
     fetchResponses,
@@ -60,13 +63,18 @@ function compareResponseCodes(params) {
 
 const comparisonMap = {
   value: compareByValueIgnoringPaths,
+  type: compareByType,
+  schema: compareToSchema,
 };
 
 function compareResponsePayloads(params) {
-  const { responses, destPath, config } = params;
+  const { openapi, responses, destPath, config } = params;
   let { hasErrors } = params; // read the existing value as our initial value
   const showDiff = true;
-  const compareFn = comparisonMap[config.compareMode] || comparisonMap.value;
+  const compareMode = config.compareMode || 'value';
+  const compareFn = comparisonMap[compareMode];
+
+  logger.info(`Comparing by ${compareMode.toUpperCase()}`);
 
   // For each response compare the data according to the compare mode
   responses.forEach((res) => {
@@ -85,6 +93,8 @@ function compareResponsePayloads(params) {
       pathsToIgnore,
       showDiff,
       diffLabel,
+      openapi,
+      res,
     });
 
     if (!result) {
@@ -133,6 +143,27 @@ function compareByType({ objA, objB, pathsToIgnore, showDiff }) {
   return compareByValue({ objA: newA, objB: newB, showDiff });
 }
 
+function compareToSchema({ openapi, objB, res, showDiff }) {
+  // Get the operation for this response's method and URL
+  const { error: pathError, value } = openapi.path(res.config.method, res.url);
+
+  if (pathError) {
+    logger.error(pathError.toString());
+    return false;
+  }
+
+  const { operation } = value;
+  const [val, opError] = operation.response(res.statusCode, objB);
+  const isValid = opError === undefined;
+
+  if (!isValid && showDiff) {
+    logger.verbose('response', objB);
+    logger.error(opError.toString());
+  }
+
+  return isValid;
+}
+
 /**
  * This function is used when recording to decide what to do with the API response
  * We do not show diffs between the old and new response in this mode.
@@ -177,4 +208,5 @@ module.exports = {
   compareCommand,
   compareByType,
   compareResponseData,
+  compareToSchema,
 };

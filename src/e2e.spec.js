@@ -2,12 +2,12 @@
 const path = require('path');
 const spawn = require('spawn-command');
 
-describe('amuck CLI', () => {
+describe('CLI', () => {
   describe('top-level help', () => {
     it('should be displayed when not enough arguments are passed', async () => {
       const result = await runCommand();
       expect(result).toMatchInlineSnapshot(`
-        "Usage: amuck <command>
+        "Usage: oaat <command>
 
         Options:
           -V, --version                                            output the version number
@@ -26,7 +26,7 @@ describe('amuck CLI', () => {
     it('should be displayed when --help is passed', async () => {
       const result = await runCommand('--help');
       expect(result).toMatchInlineSnapshot(`
-        "Usage: amuck <command>
+        "Usage: oaat <command>
 
         Options:
           -V, --version                                            output the version number
@@ -199,18 +199,6 @@ describe('amuck CLI', () => {
   });
 
   describe('compare', () => {
-    it('should indicate there are no differences when there are no differences', async () => {
-      const result = await runCommand(`compare ./fixtures/threeExamplesWithCorrectStatus.json`);
-      expect(result).toMatchInlineSnapshot(`
-        "[34minfo[39m: Fetching 1 of 4: https://jsonplaceholder.typicode.com/posts get
-        [34minfo[39m: Fetching 2 of 4: https://jsonplaceholder.typicode.com/posts/1 get
-        [34minfo[39m: Fetching 3 of 4: https://jsonplaceholder.typicode.com/posts/2 get
-        [34minfo[39m: Fetching 4 of 4: https://jsonplaceholder.typicode.com/posts/wrong-param get
-        [32msuccess[39m: ✅ No differences detected
-        "
-      `);
-    });
-
     it('should indicate there are differences when the status codes are different', async () => {
       const result = await runCommand(`compare ./fixtures/threeExamplesWithWrongStatus.json`);
       expect(result).toMatchInlineSnapshot(`
@@ -220,36 +208,351 @@ describe('amuck CLI', () => {
         [34minfo[39m: Fetching 4 of 4: https://jsonplaceholder.typicode.com/posts/wrong-param get
         [31merror[39m: Expected 400 but received 200: /posts/1
         [31merror[39m: Expected 400 but received 200: /posts/2
+        [34minfo[39m: Comparing by VALUE
         [31merror[39m: ❌ Differences were detected
         "
       `);
     });
 
-    it('should indicate there are differences when the response body is different', async () => {
-      const result = await runCommand(`compare ./fixtures/threeExamplesWithDiffBody.json`);
-      expect(result).toMatchInlineSnapshot(`
-        "[34minfo[39m: Fetching 1 of 4: https://jsonplaceholder.typicode.com/posts get
-        [34minfo[39m: Fetching 2 of 4: https://jsonplaceholder.typicode.com/posts/1 get
-        [34minfo[39m: Fetching 3 of 4: https://jsonplaceholder.typicode.com/posts/2 get
-        [34minfo[39m: Fetching 4 of 4: https://jsonplaceholder.typicode.com/posts/wrong-param get
-        [31merror[39m: /posts/2
-        [32m- Expected[39m
-        [31m+ Received[39m
+    describe('by value', () => {
+      it('should indicate there are no differences when there are no differences', async () => {
+        const result = await runCommand(`compare ./fixtures/threeExamplesWithCorrectStatus.json`);
+        expect(result).toMatchInlineSnapshot(`
+          "[34minfo[39m: Fetching 1 of 4: https://jsonplaceholder.typicode.com/posts get
+          [34minfo[39m: Fetching 2 of 4: https://jsonplaceholder.typicode.com/posts/1 get
+          [34minfo[39m: Fetching 3 of 4: https://jsonplaceholder.typicode.com/posts/2 get
+          [34minfo[39m: Fetching 4 of 4: https://jsonplaceholder.typicode.com/posts/-2 get
+          [34minfo[39m: Comparing by VALUE
+          [32msuccess[39m: ✅ No differences detected
+          "
+        `);
+      });
 
-        [2m  Object {[22m
-        [2m    \\"body\\": \\"est rerum tempore vitae[22m
-        [2m  sequi sint nihil reprehenderit dolor beatae ea dolores neque[22m
-        [2m  fugiat blanditiis voluptate porro vel nihil molestiae ut reiciendis[22m
-        [2m  qui aperiam non debitis possimus qui neque nisi nulla\\",[22m
-        [2m    \\"id\\": 2,[22m
-        [32m-   \\"title\\": \\"Non matching title\\",[39m
-        [31m+   \\"title\\": \\"qui est esse\\",[39m
-        [2m    \\"userId\\": 1,[22m
-        [2m  }[22m
+      it('should indicate there are differences when the response body is different and the comparison is by-value', async () => {
+        const result = await runCommand(`compare ./fixtures/threeExamplesWithDiffBody.json`);
+        expect(result).toMatchInlineSnapshot(`
+          "[34minfo[39m: Fetching 1 of 4: https://jsonplaceholder.typicode.com/posts get
+          [34minfo[39m: Fetching 2 of 4: https://jsonplaceholder.typicode.com/posts/1 get
+          [34minfo[39m: Fetching 3 of 4: https://jsonplaceholder.typicode.com/posts/2 get
+          [34minfo[39m: Fetching 4 of 4: https://jsonplaceholder.typicode.com/posts/wrong-param get
+          [34minfo[39m: Comparing by VALUE
+          [31merror[39m: /posts/2
+          [32m- Expected[39m
+          [31m+ Received[39m
 
-        [31merror[39m: ❌ Differences were detected
-        "
-      `);
+          [2m  Object {[22m
+          [2m    \\"body\\": \\"est rerum tempore vitae[22m
+          [2m  sequi sint nihil reprehenderit dolor beatae ea dolores neque[22m
+          [2m  fugiat blanditiis voluptate porro vel nihil molestiae ut reiciendis[22m
+          [2m  qui aperiam non debitis possimus qui neque nisi nulla\\",[22m
+          [2m    \\"id\\": 2,[22m
+          [32m-   \\"title\\": \\"Non matching title\\",[39m
+          [31m+   \\"title\\": \\"qui est esse\\",[39m
+          [2m    \\"userId\\": 1,[22m
+          [2m  }[22m
+
+          [31merror[39m: ❌ Differences were detected
+          "
+        `);
+      });
+    });
+
+    describe('by type', () => {
+      it('should indicate there are no differences when the body values differ but have the same type', async () => {
+        const result = await runCommand(`compare ./fixtures/threeExamplesWithDiffBody.json -m type`);
+        expect(result).toMatchInlineSnapshot(`
+          "[34minfo[39m: Fetching 1 of 4: https://jsonplaceholder.typicode.com/posts get
+          [34minfo[39m: Fetching 2 of 4: https://jsonplaceholder.typicode.com/posts/1 get
+          [34minfo[39m: Fetching 3 of 4: https://jsonplaceholder.typicode.com/posts/2 get
+          [34minfo[39m: Fetching 4 of 4: https://jsonplaceholder.typicode.com/posts/wrong-param get
+          [34minfo[39m: Comparing by TYPE
+          [32msuccess[39m: ✅ No differences detected
+          "
+        `);
+      });
+    });
+
+    describe('by schema', () => {
+      it('should indicate there are no differences when the schema matches', async () => {
+        const result = await runCommand(`compare ./fixtures/threeExamplesWithCorrectStatus.json -m schema`);
+        expect(result).toMatchInlineSnapshot(`
+          "[34minfo[39m: Fetching 1 of 4: https://jsonplaceholder.typicode.com/posts get
+          [34minfo[39m: Fetching 2 of 4: https://jsonplaceholder.typicode.com/posts/1 get
+          [34minfo[39m: Fetching 3 of 4: https://jsonplaceholder.typicode.com/posts/2 get
+          [34minfo[39m: Fetching 4 of 4: https://jsonplaceholder.typicode.com/posts/-2 get
+          [34minfo[39m: Comparing by SCHEMA
+          [32msuccess[39m: ✅ No differences detected
+          "
+        `);
+      });
+
+      it('should indicate there are differences when the schema does not match', async () => {
+        const result = await runCommand(`compare ./fixtures/threeExamplesWithDiffSchema.json -m schema`);
+        expect(result).toMatchInlineSnapshot(`
+          "[34minfo[39m: Fetching 1 of 4: https://jsonplaceholder.typicode.com/posts get
+          [34minfo[39m: Fetching 2 of 4: https://jsonplaceholder.typicode.com/posts/1 get
+          [34minfo[39m: Fetching 3 of 4: https://jsonplaceholder.typicode.com/posts/2 get
+          [34minfo[39m: Fetching 4 of 4: https://jsonplaceholder.typicode.com/posts/wrong-param get
+          [34minfo[39m: Comparing by SCHEMA
+          [31merror[39m: Response invalid
+            at: body
+              at: 0
+                at: id
+                  Expected a string. Received: 1
+                at: title
+                  Expected an integer. Received: \\"sunt aut facere repellat provident occaecati excepturi optio reprehenderit\\"
+              at: 1
+                at: id
+                  Expected a string. Received: 2
+                at: title
+                  Expected an integer. Received: \\"qui est esse\\"
+              at: 2
+                at: id
+                  Expected a string. Received: 3
+                at: title
+                  Expected an integer. Received: \\"ea molestias quasi exercitationem repellat qui ipsa sit aut\\"
+              at: 3
+                at: id
+                  Expected a string. Received: 4
+                at: title
+                  Expected an integer. Received: \\"eum et est occaecati\\"
+              at: 4
+                at: id
+                  Expected a string. Received: 5
+                at: title
+                  Expected an integer. Received: \\"nesciunt quas odio\\"
+              at: 5
+                at: id
+                  Expected a string. Received: 6
+                at: title
+                  Expected an integer. Received: \\"dolorem eum magni eos aperiam quia\\"
+              at: 6
+                at: id
+                  Expected a string. Received: 7
+                at: title
+                  Expected an integer. Received: \\"magnam facilis autem\\"
+              at: 7
+                at: id
+                  Expected a string. Received: 8
+                at: title
+                  Expected an integer. Received: \\"dolorem dolore est ipsam\\"
+              at: 8
+                at: id
+                  Expected a string. Received: 9
+                at: title
+                  Expected an integer. Received: \\"nesciunt iure omnis dolorem tempora et accusantium\\"
+              at: 9
+                at: id
+                  Expected a string. Received: 10
+                at: title
+                  Expected an integer. Received: \\"optio molestias id quia eum\\"
+              at: 10
+                at: id
+                  Expected a string. Received: 11
+                at: title
+                  Expected an integer. Received: \\"et ea vero quia laudantium autem\\"
+              at: 11
+                at: id
+                  Expected a string. Received: 12
+                at: title
+                  Expected an integer. Received: \\"in quibusdam tempore odit est dolorem\\"
+              at: 12
+                at: id
+                  Expected a string. Received: 13
+                at: title
+                  Expected an integer. Received: \\"dolorum ut in voluptas mollitia et saepe quo animi\\"
+              at: 13
+                at: id
+                  Expected a string. Received: 14
+                at: title
+                  Expected an integer. Received: \\"voluptatem eligendi optio\\"
+              at: 14
+                at: id
+                  Expected a string. Received: 15
+                at: title
+                  Expected an integer. Received: \\"eveniet quod temporibus\\"
+              at: 15
+                at: id
+                  Expected a string. Received: 16
+                at: title
+                  Expected an integer. Received: \\"sint suscipit perspiciatis velit dolorum rerum ipsa laboriosam odio\\"
+              at: 16
+                at: id
+                  Expected a string. Received: 17
+                at: title
+                  Expected an integer. Received: \\"fugit voluptas sed molestias voluptatem provident\\"
+              at: 17
+                at: id
+                  Expected a string. Received: 18
+                at: title
+                  Expected an integer. Received: \\"voluptate et itaque vero tempora molestiae\\"
+              at: 18
+                at: id
+                  Expected a string. Received: 19
+                at: title
+                  Expected an integer. Received: \\"adipisci placeat illum aut reiciendis qui\\"
+              at: 19
+                at: id
+                  Expected a string. Received: 20
+                at: title
+                  Expected an integer. Received: \\"doloribus ad provident suscipit at\\"
+              at: 20
+                at: id
+                  Expected a string. Received: 21
+                at: title
+                  Expected an integer. Received: \\"asperiores ea ipsam voluptatibus modi minima quia sint\\"
+              at: 21
+                at: id
+                  Expected a string. Received: 22
+                at: title
+                  Expected an integer. Received: \\"dolor sint quo a velit explicabo quia nam\\"
+              at: 22
+                at: id
+                  Expected a string. Received: 23
+                at: title
+                  Expected an integer. Received: \\"maxime id vitae nihil numquam\\"
+              at: 23
+                at: id
+                  Expected a string. Received: 24
+                at: title
+                  Expected an integer. Received: \\"autem hic labore sunt dolores incidunt\\"
+              at: 24
+                at: id
+                  Expected a string. Received: 25
+                at: title
+                  Expected an integer. Received: \\"rem alias distinctio quo quis\\"
+              at: 25
+                at: id
+                  Expected a string. Received: 26
+                at: title
+                  Expected an integer. Received: \\"est et quae odit qui non\\"
+              at: 26
+                at: id
+                  Expected a string. Received: 27
+                at: title
+                  Expected an integer. Received: \\"quasi id et eos tenetur aut quo autem\\"
+              at: 27
+                at: id
+                  Expected a string. Received: 28
+                at: title
+                  Expected an integer. Received: \\"delectus ullam et corporis nulla voluptas sequi\\"
+              at: 28
+                at: id
+                  Expected a string. Received: 29
+                at: title
+                  Expected an integer. Received: \\"iusto eius quod necessitatibus culpa ea\\"
+              at: 29
+                at: id
+                  Expected a string. Received: 30
+                at: title
+                  Expected an integer. Received: \\"a quo magni similique perferendis\\"
+              at: 30
+                at: id
+                  Expected a string. Received: 31
+                at: title
+                  Expected an integer. Received: \\"ullam ut quidem id aut vel consequuntur\\"
+              at: 31
+                at: id
+                  Expected a string. Received: 32
+                at: title
+                  Expected an integer. Received: \\"doloremque illum aliquid sunt\\"
+              at: 32
+                at: id
+                  Expected a string. Received: 33
+                at: title
+                  Expected an integer. Received: \\"qui explicabo molestiae dolorem\\"
+              at: 33
+                at: id
+                  Expected a string. Received: 34
+                at: title
+                  Expected an integer. Received: \\"magnam ut rerum iure\\"
+              at: 34
+                at: id
+                  Expected a string. Received: 35
+                at: title
+                  Expected an integer. Received: \\"id nihil consequatur molestias animi provident\\"
+              at: 35
+                at: id
+                  Expected a string. Received: 36
+                at: title
+                  Expected an integer. Received: \\"fuga nam accusamus voluptas reiciendis itaque\\"
+              at: 36
+                at: id
+                  Expected a string. Received: 37
+                at: title
+                  Expected an integer. Received: \\"provident vel ut sit ratione est\\"
+              at: 37
+                at: id
+                  Expected a string. Received: 38
+                at: title
+                  Expected an integer. Received: \\"explicabo et eos deleniti nostrum ab id repellendus\\"
+              at: 38
+                at: id
+                  Expected a string. Received: 39
+                at: title
+                  Expected an integer. Received: \\"eos dolorem iste accusantium est eaque quam\\"
+              at: 39
+                at: id
+                  Expected a string. Received: 40
+                at: title
+                  Expected an integer. Received: \\"enim quo cumque\\"
+              at: 40
+                at: id
+                  Expected a string. Received: 41
+                at: title
+                  Expected an integer. Received: \\"non est facere\\"
+              at: 41
+                at: id
+                  Expected a string. Received: 42
+                at: title
+                  Expected an integer. Received: \\"commodi ullam sint et excepturi error explicabo praesentium voluptas\\"
+              at: 42
+                at: id
+                  Expected a string. Received: 43
+                at: title
+                  Expected an integer. Received: \\"eligendi iste nostrum consequuntur adipisci praesentium sit beatae perferendis\\"
+              at: 43
+                at: id
+                  Expected a string. Received: 44
+                at: title
+                  Expected an integer. Received: \\"optio dolor molestias sit\\"
+              at: 44
+                at: id
+                  Expected a string. Received: 45
+                at: title
+                  Expected an integer. Received: \\"ut numquam possimus omnis eius suscipit laudantium iure\\"
+              at: 45
+                at: id
+                  Expected a string. Received: 46
+                at: title
+                  Expected an integer. Received: \\"aut quo modi neque nostrum ducimus\\"
+              at: 46
+                at: id
+                  Expected a string. Received: 47
+                at: title
+                  Expected an integer. Received: \\"quibusdam cumque rem aut deserunt\\"
+              at: 47
+                at: id
+                  Expected a string. Received: 48
+                at: title
+                  Expected an integer. Received: \\"ut voluptatem illum ea doloribus itaque eos\\"
+              at: 48
+                at: id
+                  Expected a string. Received: 49
+                at: title
+                  Expected an integer. Received: \\"laborum non sunt aut ut assumenda perspiciatis voluptas\\"
+              at: 49
+                at: id
+                  Expected a string. Received: 50
+                at: title
+                  Expected an integer. Received: \\"repellendus qui recusandae incidunt voluptates tenetur qui omnis exercitationem\\"
+              at: 50
+                at: id
+                  Expected a string. Received: 51
+                at: title
+                  Expected an integer. Received: \\"so"
+        `);
+      });
     });
   });
 });

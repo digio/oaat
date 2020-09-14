@@ -1,11 +1,12 @@
-# openapi-mock-aws
+# oaat
+> Open API AWS Tool
 
 [![npm package][npm-image]][npm-url]
 [![Build Status][travis-image]][travis-url]
 [![Coverage Status][coveralls-image]][coveralls-url]
 [![Downloads][downloads-image]][npm-url]
 
-Open API Spec documentation and mocking tool with support for deploying the API to AWS API Gateway.
+Open API Spec tool for recording, linting & comparing API responses; building and deploying a spec to AWS API Gateway.
 
 ## Table of Contents
 
@@ -15,6 +16,7 @@ Open API Spec documentation and mocking tool with support for deploying the API 
 - [Linting](#linting)
 - [Building](#building)
 - [Comparing](#comparing)
+- Deploying (Coming soon)
 - [Config file](#config-file)
 
 ## Installation
@@ -23,7 +25,7 @@ Open API Spec documentation and mocking tool with support for deploying the API 
 npm install -g openapi-mock-aws
 
 # Display help 
-amuck --help
+oaat --help
 ```
 
 **Note**: Node 10.x or higher runtime required.
@@ -31,23 +33,23 @@ amuck --help
 ## Usage
 
 This tool does 4 things:
-- `amuck record` records API responses to requests specified in `x-examples` fields in an OpenAPI 3.x spec file.
-- `amuck lint` lints an OpenAPI 3.x spec file (basic formatting; tools like [speccy](https://www.npmjs.com/package/speccy) provide more capability, but don't do formatting).
-- `amuck build` creates an OpenAPI 3.x spec file with [API Gateway][api-gateway-url] headers, optionally with mock responses for the APIs.
-- `amuck deploy` deploys an OpenAPI 3.x spec file that has the API Gateway headers to API Gateway
-- `amuck compare` compares the earlier-recorded responses to the last responses for endpoints in an OpenAPI 3.x spec file.
+- `oaat record` records API responses to requests specified in `x-examples` fields in an OpenAPI 3.x spec file.
+- `oaat lint` lints an OpenAPI 3.x spec file (basic formatting; tools like [speccy](https://www.npmjs.com/package/speccy) provide more capability, but don't do formatting).
+- `oaat compare` compares the earlier-recorded responses to the last responses for endpoints in an OpenAPI 3.x spec file.
+- `oaat build` creates an OpenAPI 3.x spec file with [API Gateway][api-gateway-url] headers, optionally with mock responses for the APIs.
+- (Coming soon) `oaat deploy` deploys an OpenAPI 3.x spec file that has the API Gateway headers to API Gateway.
 
 ## Recording
 
-This tool provides the capability to record responses by making requests to the real API endpoints (`amuck record`),
-and optionally use them as mock responses later (`amuck apig` and `amuck deploy`),
+This tool provides the capability to record responses by making requests to the real API endpoints (`oaat record`),
+and optionally use them as mock responses later (`oaat deploy`),
 by reading an Open API spec file (v3.x) in _JSON_ format. 
 
 ### Command
 
 ```shell script
-$ amuck record --help
-Usage: amuck record [options] <jsonFile> [serverUrl]
+$ oaat record --help
+Usage: oaat record [options] <jsonFile> [serverUrl]
 
 Record the responses of API spec file endpoint requests (optionally use a different server to make requests)
 
@@ -237,7 +239,7 @@ There are lots of good tools that can check the syntax and style of Open API Sep
 - [Speccy][speccy-url]
 - [OpenAPI Tools][openapi-tools-url]
 
-`amuck` compliments these tools, as it lints things that the others don't:
+`oaat` compliments these tools, as it lints things that the others don't:
 
 - sort `paths` alphabetically (true)
 - sort `components.schemas` alphabetically (true)
@@ -246,8 +248,8 @@ There are lots of good tools that can check the syntax and style of Open API Sep
 ### Command
 
 ```shell script
-$ amuck lint --help
-Usage: amuck lint [options] <jsonFile>
+$ oaat lint --help
+Usage: oaat lint [options] <jsonFile>
 
 Tidy the API Spec up a bit
 
@@ -268,8 +270,8 @@ Creates an OpenAPI 3.x spec file with [API Gateway][api-gateway-url] headers, op
 ### Command
 
 ```shell script
-$ amuck lint --help
-Usage: amuck build [options] <jsonFile> <outputJsonFile> [serverUrl]
+$ oaat lint --help
+Usage: oaat build [options] <jsonFile> <outputJsonFile> [serverUrl]
 
 Adds custom headers & Swagger UI endpoint to allow deployment of spec file to AWS API Gateway with documentation
 
@@ -291,14 +293,14 @@ snapshots, and comparing those to the latest responses.
 ### Command
 
 ```shell script
-$ amuck lint --help
-Usage: amuck compare [options] <jsonFile> <outputJsonFile> [serverUrl]
+$ oaat lint --help
+Usage: oaat compare [options] <jsonFile> <outputJsonFile> [serverUrl]
 
 Adds custom headers & Swagger UI endpoint to allow deployment of spec file to AWS API Gateway with documentation
 
 Options:
   -c, --config <file>        Config file to override default config
-  -m, --compare-mode <mode>  Compares by "value" (default), "type"
+  -m, --compare-mode <mode>  Compares by "value" (default), "type", "schema"
   -q, --quiet                No logging
   -v, --verbose              Verbose logging
   -h, --help                 display help for command
@@ -306,7 +308,7 @@ Options:
 
 ## Config file
 
-Amuck has a default configuration which can be overridden using a config file.
+oaat has a default configuration which can be overridden using a config file.
 The config file can be JSON or a CommonJS module which exports an object.
 
 Example:
@@ -319,7 +321,7 @@ module.exports = {
     simultaneousRequests: 15,
   },
 
-  // Configuration for the `amuck record` command:
+  // Configuration for the `oaat record` command:
   record: {
 
     // Path to a subdirectory (relative to the spec file) that contains the response files
@@ -386,13 +388,13 @@ module.exports = {
 
 ---
 
-[npm-image]: https://img.shields.io/npm/v/openapi-mock-aws.svg
-[npm-url]: http://npmjs.org/package/openapi-mock-aws
-[travis-image]: https://travis-ci.org/uglow/openapi-mock-aws.svg?branch=master
-[travis-url]: https://travis-ci.org/uglow/openapi-mock-aws
-[coveralls-image]: https://coveralls.io/repos/github/uglow/openapi-mock-aws/badge.svg?branch=master
-[coveralls-url]: https://coveralls.io/github/uglow/openapi-mock-aws?branch=master
-[downloads-image]: https://img.shields.io/npm/dm/openapi-mock-aws.svg
+[npm-image]: https://img.shields.io/npm/v/oaat.svg
+[npm-url]: http://npmjs.org/package/oaat
+[travis-image]: https://travis-ci.org/digio/oaat.svg?branch=master
+[travis-url]: https://travis-ci.org/digio/oaat
+[coveralls-image]: https://coveralls.io/repos/github/digio/oaat/badge.svg?branch=master
+[coveralls-url]: https://coveralls.io/github/digio/oaat?branch=master
+[downloads-image]: https://img.shields.io/npm/dm/oaat.svg
 [api-gateway-url]: https://docs.aws.amazon.com/apigateway/index.html
 [speccy-url]: http://speccy.io/
 [openapi-tools-url]: https://openapi.tools/

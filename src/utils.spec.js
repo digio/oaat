@@ -1,10 +1,5 @@
 /* eslint-disable @getify/proper-arrows/where */
-const {
-  addParamsToFetchConfig,
-  getAbsSpecFilePath,
-  getLogAndConfig,
-  getFetchConfigForAPIEndpoints,
-} = require('./utils');
+const { addParamsToFetchConfig, getLogAndConfig, getFetchConfigForAPIEndpoints, validateSpecObj } = require('./utils');
 
 describe('utils', () => {
   describe('getFetchConfigForAPIEndpoints()', () => {
@@ -14,10 +9,10 @@ describe('utils', () => {
           '/api': {
             get: {
               responses: {
-                '200': {
+                200: {
                   description: 'Successful Operation',
                 },
-                '400': {
+                400: {
                   description: 'The request is invalid',
                 },
               },
@@ -60,10 +55,10 @@ describe('utils', () => {
                 },
               ],
               responses: {
-                '200': {
+                200: {
                   description: 'Successful Operation',
                 },
-                '400': {
+                400: {
                   description: 'The request is invalid',
                 },
               },
@@ -93,7 +88,7 @@ describe('utils', () => {
                 },
               ],
               responses: {
-                '200': {
+                200: {
                   description: 'Successful Operation',
                   'x-examples': {
                     myExample: {
@@ -175,7 +170,7 @@ describe('utils', () => {
                 },
               ],
               responses: {
-                '200': {
+                200: {
                   description: 'Successful Operation',
                   'x-examples': {
                     myExample: {
@@ -222,7 +217,7 @@ describe('utils', () => {
                 },
               },
               responses: {
-                '200': {
+                200: {
                   description: 'Successful Operation',
                 },
               },
@@ -250,7 +245,7 @@ describe('utils', () => {
                 },
               },
               responses: {
-                '200': {
+                200: {
                   description: 'Successful Operation',
                   'x-examples': {
                     myExample: {
@@ -308,7 +303,7 @@ describe('utils', () => {
                 },
               },
               responses: {
-                '200': {
+                200: {
                   'x-examples': {
                     myExample: {
                       parameters: [{ value: 'foo' }],
@@ -352,7 +347,7 @@ describe('utils', () => {
                 },
               },
               responses: {
-                '200': {
+                200: {
                   'x-examples': {
                     myExample: {
                       requestBody: { value: 'foo' },
@@ -396,7 +391,7 @@ describe('utils', () => {
                 },
               },
               responses: {
-                '400': {
+                400: {
                   'x-examples': {
                     myExample: {
                       requestBody: { value: 'foo' },
@@ -455,7 +450,7 @@ describe('utils', () => {
                 },
               },
               responses: {
-                '400': {
+                400: {
                   'x-examples': {
                     myExample: {
                       requestBody: { value: 'foo' },
@@ -500,7 +495,7 @@ describe('utils', () => {
                 },
               },
               responses: {
-                '200': {
+                200: {
                   'x-ignore': true,
                   'x-examples': {
                     myExample: {
@@ -510,7 +505,7 @@ describe('utils', () => {
                   },
                   description: 'Success response',
                 },
-                '400': {
+                400: {
                   'x-examples': {
                     myExample: {
                       requestBody: { value: 'foo' },
@@ -553,7 +548,7 @@ describe('utils', () => {
           config: { method: 'get' },
           apiEndpoint: {
             responses: {
-              '200': {
+              200: {
                 description: 'Successful Operation',
               },
             },
@@ -607,7 +602,7 @@ describe('utils', () => {
               },
             ],
             responses: {
-              '200': {
+              200: {
                 description: 'Successful Operation',
                 'x-examples': {
                   default: {
@@ -660,7 +655,7 @@ describe('utils', () => {
               },
             ],
             responses: {
-              '200': {
+              200: {
                 description: 'Successful Operation',
                 'x-examples': {
                   default: {
@@ -731,7 +726,7 @@ describe('utils', () => {
               },
             ],
             responses: {
-              '200': {
+              200: {
                 description: 'Successful Operation',
                 'x-examples': {
                   default: {
@@ -796,7 +791,7 @@ describe('utils', () => {
               },
             },
             responses: {
-              '200': {
+              200: {
                 description: 'Successful Operation',
                 'x-examples': {
                   default: {
@@ -867,7 +862,7 @@ describe('utils', () => {
               },
             },
             responses: {
-              '200': {
+              200: {
                 description: 'Successful Operation',
                 'x-examples': {
                   default: {
@@ -958,6 +953,31 @@ describe('utils', () => {
         updateResponseWhenInexactMatch: true,
         updateResponseWhenTypesMatch: true,
       });
+    });
+  });
+
+  describe('validateSpec()', () => {
+    it('should return an openapi object when the spec is valid', async () => {
+      const params = {
+        specObj: require('../fixtures/threeExamples.json'),
+      };
+      const newParams = await validateSpecObj(params);
+
+      expect(newParams.openapi).toBeDefined();
+    });
+
+    it('should throw an error if the specObj is not valid', async () => {
+      const params = {
+        specObj: { openapi: 'not-valid' },
+      };
+
+      expect.assertions(1);
+      try {
+        await validateSpecObj(params);
+      } catch (err) {
+        // eslint-disable-next-line jest/no-conditional-expect,jest/no-try-expect
+        expect(err.toString()).toMatch('One or more errors exist in');
+      }
     });
   });
 });

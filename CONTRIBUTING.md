@@ -244,11 +244,10 @@ A detailed explanation can be found in this [document][commit-message-format].
 <hr>
 
 [principles]: https://mantelgroup.com.au/our-principles/
-[repo]: https://github.com/digio/serverless-stage-env-vars
-[issues]: https://github.com/digio/serverless-stage-env-vars/issues
-[pulls]: https://github.com/digio/serverless-stage-env-vars/pulls
-[repo-commits]: https://github.com/digio/serverless-stage-env-vars/commits/master/
+[repo]: https://github.com/digio/oaat
+[issues]: https://github.com/digio/oaat/issues
+[pulls]: https://github.com/digio/oaat/pulls
+[repo-commits]: https://github.com/digio/oaat/commits/master/
 [dev-doc]: DEVELOPERS.md
 [js-style-guide]: https://google.github.io/styleguide/jsguide.html
 [commit-message-format]: https://docs.google.com/document/d/1QrDFcIiPjSLDn3EL15IJygNPiHORgU1_OOAqWjiDU5Y/edit#
-[slack-sol]: https://mantel-group.slack.com/channels/digio-solution-accelerators

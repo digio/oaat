@@ -131,7 +131,7 @@
               "badParam": {
                 "parameters": [
                   {
-                    "value": "-2"
+                    "value": "wrong-param"
                   }
                 ],
                 "responseFile": "../fixtures/output/mocks/GET_posts_{id}-404_DEFAULT_badParam.json"
@@ -148,15 +148,17 @@
         "type": "object",
         "properties": {
           "id": {
-            "type": "integer",
-            "format": "int64"
+            "type": "string",
+            "description": "This should be an integer"
           },
           "userId": {
             "type": "integer",
             "format": "int64"
           },
           "title": {
-            "type": "string"
+            "type": "integer",
+            "format": "int64",
+            "description": "This should be an string"
           },
           "body": {
             "type": "string"

@@ -6,10 +6,16 @@ module.exports = {
 
   env: {
     es6: true,
+    'jest/globals': true,
   },
 
-  extends: ['plugin:prettier/recommended', 'plugin:unicorn/recommended', 'plugin:node/recommended-script'],
-  plugins: ['@getify/proper-arrows'],
+  extends: [
+    'plugin:prettier/recommended',
+    'plugin:unicorn/recommended',
+    'plugin:node/recommended-script',
+    'plugin:jest/recommended',
+  ],
+  plugins: ['jest', '@getify/proper-arrows'],
   rules: {
     // Allow some flexibility here
     'unicorn/prevent-abbreviations': 'off',

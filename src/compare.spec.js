@@ -1,5 +1,6 @@
 /* eslint-disable @getify/proper-arrows/where */
-const { compareResponseData, compareByType } = require('./compare');
+const { compareResponseData, compareByType, compareToSchema } = require('./compare');
+const { validateSpecObj } = require('./utils');
 
 describe('compareByType()', () => {
   it('should compare two objects and return true if the have the same shape AND type', () => {
@@ -18,7 +19,50 @@ describe('compareByType()', () => {
     expect(compareByType({ objA: { a: { b: '2' } }, objB: { a: {} }, showDiff })).toEqual(false);
     expect(compareByType({ objA: { a: [1, 2] }, objB: { a: [1, 2, 3] }, showDiff })).toEqual(false);
     expect(compareByType({ objA: { a: [{ b: 'cat' }] }, objB: { a: [{ b: 'bird', c: 1 }] }, showDiff })).toEqual(false);
-    expect(compareByType({ objA: { a: [{ b: ['cat'] }] }, objB: { a: [{ b: ['cat', 'fish'] }] }, showDiff })).toEqual(false);
+    expect(compareByType({ objA: { a: [{ b: ['cat'] }] }, objB: { a: [{ b: ['cat', 'fish'] }] }, showDiff })).toEqual(
+      false,
+    );
+  });
+});
+
+describe('compareToSchema()', () => {
+  it('should compare the response to the schema operation and return true if there were no errors', async () => {
+    const { openapi } = await validateSpecObj({ specObj: require('../fixtures/threeExamples.json') });
+    const res = { url: '/posts', statusCode: 200, expectedStatusCode: 200, config: { method: 'get' } };
+    // This is the API response
+    const objB = [
+      {
+        userId: 1,
+        id: 1,
+        title: 'sunt aut facere repellat  optio reprehenderit',
+        body: 'quia et suscipit\nveniet architecto',
+      },
+    ];
+    const result = compareToSchema({ openapi, res, objB });
+    expect(result).toEqual(true);
+  });
+
+  it('should compare the response to the schema operation and return false if there are errors', async () => {
+    const { openapi } = await validateSpecObj({ specObj: require('../fixtures/threeExamples.json') });
+    const res = { url: '/posts', statusCode: 200, expectedStatusCode: 200, config: { method: 'get' } };
+    // This is the API response
+    const objB = [
+      {
+        userId: 'sdf', // <--- should be number
+        id: 'dfdd', // <--- should be number
+      },
+    ];
+    const result = compareToSchema({ openapi, res, objB, showDiff: true });
+    expect(result).toEqual(false);
+  });
+
+  it('should show an error when the response codes do not match', async () => {
+    const { openapi } = await validateSpecObj({ specObj: require('../fixtures/threeExamples.json') });
+    const res = { url: '/posts', statusCode: 401, expectedStatusCode: 200, config: { method: 'get' } };
+    // This is the API response
+    const objB = [{ userId: 1, id: 1 }];
+    const result = compareToSchema({ openapi, res, objB, showDiff: true });
+    expect(result).toEqual(false);
   });
 });
 

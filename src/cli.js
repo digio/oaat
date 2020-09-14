@@ -4,7 +4,7 @@ const program = require('commander');
 const { version } = require('../package.json');
 const { getLogAndConfig } = require('./utils');
 
-program.name('amuck').version(version).usage('<command>');
+program.name('oaat').version(version).usage('<command>');
 
 program
   .command('lint <jsonFile>')

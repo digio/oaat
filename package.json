@@ -1,15 +1,20 @@
 {
   "name": "openapi-mock-aws",
-  "version": "0.0.1",
-  "description": "Open API Spec documentation and mocking tool with support for deploying the API to AWS API Gateway",
+  "version": "0.0.0-development",
+  "description": "Open API AWS Tool with support for deploying an API to AWS API Gateway",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/digio/oaat.git"
+  },
   "bin": {
-    "amuck": "./src/cli.js"
+    "oaat": "./src/cli.js"
   },
   "keywords": [
     "oas",
     "openapi",
     "mock",
-    "api"
+    "api",
+    "oat"
   ],
   "author": "Brett Uglow",
   "license": "Apache-2.0",
@@ -20,32 +25,57 @@
     "test:unit": "jest",
     "test:report": "jest --no-cache --coverage --json --outputFile=test-reports/unit/unit.json",
     "test:reportlist": "jest --no-cache --coverage",
-    "test:watch": "jest --watchAll"
+    "test:watch": "jest --watchAll",
+    "upload-coverage": "coveralls < test-reports/coverage/lcov.info",
+    "semantic-release": "semantic-release"
   },
-  "devDependencies": {
-    "@getify/eslint-plugin-proper-arrows": "9.1.1",
-    "eslint": "7.0.0",
-    "eslint-config-prettier": "6.10.0",
-    "eslint-plugin-node": "11.0.0",
-    "eslint-plugin-prettier": "3.1.2",
-    "eslint-plugin-unicorn": "17.2.0",
-    "jest": "25.1.0",
-    "npm-run-all": "4.1.5",
-    "prettier": "2.0.5",
-    "spawn-command": "0.0.2-1"
+  "husky": {
+    "hooks": {
+      "pre-commit": "npm-run-all verify test",
+      "commit-msg": "cz-customizable-ghooks"
+    }
+  },
+  "config": {
+    "commitizen": {
+      "path": "node_modules/cz-customizable"
+    },
+    "cz-customizable": {
+      "config": "config/commitMessageConfig.js"
+    }
   },
   "dependencies": {
-    "commander": "^5.1.0",
+    "commander": "5.1.0",
     "jest-diff": "26.2.0",
-    "lodash": "4.17.15",
+    "lodash": "4.17.20",
     "mkdirp": "1.0.4",
-    "node-fetch": "2.6.0",
+    "node-fetch": "2.6.1",
+    "openapi-enforcer": "1.10.7",
     "p-pipe": "3.1.0",
     "upath": "1.2.0",
     "winston": "3.2.1"
   },
+  "devDependencies": {
+    "@getify/eslint-plugin-proper-arrows": "9.1.1",
+    "@semantic-release/changelog": "5.0.1",
+    "@semantic-release/git": "9.0.0",
+    "coveralls": "3.1.0",
+    "cz-customizable": "6.3.0",
+    "eslint": "7.8.1",
+    "eslint-config-prettier": "6.10.0",
+    "eslint-plugin-jest": "24.0.0",
+    "eslint-plugin-node": "11.0.0",
+    "eslint-plugin-prettier": "3.1.2",
+    "eslint-plugin-unicorn": "17.2.0",
+    "husky": "4.2.5",
+    "jest": "26.4.2",
+    "npm-run-all": "4.1.5",
+    "prettier": "2.1.1",
+    "semantic-release": "17.1.1",
+    "spawn-command": "0.0.2-1"
+  },
   "engines": {
-    "node": ">=10.17.0"
+    "node": ">=12.3.0",
+    "npm": ">=6.9"
   },
   "files": [
     "src",
