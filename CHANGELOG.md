@@ -1,3 +1,10 @@
+## [1.0.1](https://github.com/digio/oaat/compare/v1.0.0...v1.0.1) (2020-09-14)
+
+
+### Bug Fixes
+
+* set correct package name ([67b4bf8](https://github.com/digio/oaat/commit/67b4bf886f60aad780cb825cf3d1fc43ddd354ae))
+
 # 1.0.0 (2020-09-14)
 
 
