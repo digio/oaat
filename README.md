@@ -22,7 +22,7 @@ Open API Spec tool for recording, linting & comparing API responses; building an
 ## Installation
 
 ```
-npm install -g openapi-mock-aws
+npm install -g oaat
 
 # Display help 
 oaat --help
