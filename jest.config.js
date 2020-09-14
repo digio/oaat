@@ -18,6 +18,6 @@ module.exports = {
       lines: 55,
     },
   },
-  testTimeout: 10000,
+  testTimeout: 20000,
   setupFiles: ['<rootDir>/config/testSetup.js'],
 };
