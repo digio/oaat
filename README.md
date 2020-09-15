@@ -288,10 +288,15 @@ Options:
 
 API Gateway supports different kinds of integrations. One integration-type is "mock",
 whereby static responses are returned for any API requests. Mock integrations are useful
-for testing, documentation, or as a backup for the real API when things go wrong. 
+for testing, documentation, or as a backup for the real API when things go wrong.
 
 To create mock responses, add the `x-mock-file` property to each endpoint and specify the `-m`
-flag in the command.
+flag in the command. 
+
+> When using the `-m` option, the schema, security and requestBody information is not present in the generated spec file. 
+> This is due to limitations within API Gateway's handling of specific Open API Spec 3.x features (removing the schemas
+> makes most of the issues disappear). However, the Swagger UI still loads the original spec file, so that the documentation
+> is correct. 
 
 #### `path.method.responses.statusCode["x-mock-file"]`
 
@@ -427,7 +432,7 @@ module.exports = {
   // Configuration for the `build` command
   build: {
 
-    // The path that will server the Swagger UI
+    // The path that will serve the Swagger UI
     specUIEndpoint: '/',
 
     // The path that will serve the spec itself

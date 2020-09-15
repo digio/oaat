@@ -20,6 +20,7 @@ const WEB_PAGE_SPEC_FILE_TOKEN = '"$$_specFileUrl_$$"';
 const WEB_PAGE_LOGO_TOKEN = '$$_logoUrl_$$';
 const WEB_PAGE_TITLE = '$$_title_$$';
 const WEB_PAGE_FAVICON_HREF = '$$_faviconHref_$$';
+const APPLICATION_JSON = 'application/json';
 
 async function addGatewayInfo(specFile, server, config) {
   const specObj = readJsonFile(specFile);
@@ -32,6 +33,7 @@ async function addGatewayInfo(specFile, server, config) {
   const pipeline = pipe(
     setServerUrl,
     decorateExistingEndpoints,
+    removeSchemasIfMock,
     addRequiredSchemas,
     addSpecFileEndpoint,
     addWebsiteEndpoint,
@@ -177,12 +179,15 @@ function mockEndpointMethodStatus(mockMethodParams) {
     configs.push({ pathName: endpointName, responseData: mockFiles[0][1], parameters: data.parameters });
   }
 
-  return configs.map(({ pathName, responseData, parameters }) => ({
+  return configs.map(({ pathName, responseData }) => ({
     newPath: pathName,
     apiConfig: {
       [method]: {
         ...data,
-        parameters,
+        // Remove these so we can remove the existing components/schemas block and so APIG doesn't complain
+        parameters: undefined,
+        requestBody: undefined,
+        security: undefined,
         responses: {
           [statusCode]: {
             ...data.responses[statusCode],
@@ -190,9 +195,16 @@ function mockEndpointMethodStatus(mockMethodParams) {
             [MOCK_FILE_PROP]: undefined,
             [EXAMPLE_PROP_NAME]: undefined,
             [IGNORE_PROPERTY_PROP_NAME]: undefined,
+            // Replace the application/json schema (because it doesn't matter at all for the mock API, and the schema isn't needed by APIG)
+            // Doing this also avoids a bunch of APIG errors that can occur due schema-features that it does not support
+            content: {
+              [APPLICATION_JSON]: {
+                schema: { $ref: '#/components/schemas/Empty' },
+              },
+            },
           },
         },
-        ...getAWSMockIntegrationResponse(statusCode, { 'application/json': JSON.stringify(responseData) }),
+        ...getAWSMockIntegrationResponse(statusCode, { [APPLICATION_JSON]: JSON.stringify(responseData) }),
       },
     },
   }));
@@ -232,8 +244,24 @@ function filterNonAWSSupportedNodes(obj, key) {
   return obj;
 }
 
+function removeSchemasIfMock(params) {
+  // If we are using a Mock integration, the schemas aren't needed at all (other than the ones we add next)
+  const { config, specObj } = params;
+
+  if (config.mock) {
+    specObj.components.schemas = undefined;
+    specObj.components.securitySchemes = undefined;
+    specObj.components.requestBodies = undefined;
+  }
+
+  return params;
+}
+
 function addRequiredSchemas(params) {
   const { specObj } = params;
+
+  specObj.components.schemas = specObj.components.schemas || {};
+
   // Add the Empty type for API Gateway CORS responses
   specObj.components.schemas.Empty = {
     type: 'object',
@@ -264,7 +292,7 @@ function addSpecFileEndpoint(params) {
         200: {
           description: 'Successful Operation',
           content: {
-            'application/json': {
+            [APPLICATION_JSON]: {
               schema: {
                 $ref: '#/components/schemas/StringResponse', // Just need *something* for this to work
               },
@@ -291,7 +319,7 @@ function addSpecFileEndpoint(params) {
       },
       ...getAWSMockIntegrationResponse(
         '200',
-        { 'application/json': JSON.stringify(filteredSwagger).replace(/"\$ref"/g, '"\\$ref"') }, // We need to escape "$ref", as AWS treats any property starting with "$" as a Velocity template variable!
+        { [APPLICATION_JSON]: JSON.stringify(filteredSwagger).replace(/"\$ref"/g, '"\\$ref"') }, // We need to escape "$ref", as AWS treats any property starting with "$" as a Velocity template variable!
         {
           'method.response.header.Access-Control-Allow-Methods': "'GET,OPTIONS'",
           'method.response.header.Access-Control-Allow-Headers':
@@ -311,7 +339,7 @@ function addWebsiteEndpoint(params) {
   // Read the template
   const websiteTemplate = readFileSync(join(__dirname, 'web/index.html')).toString();
 
-  // Inject the specFile document into the template, replacing the template varible $$_swaggerObj_$$
+  // Inject the specFile document into the template, replacing the template variable $$_swaggerObj_$$
   const websiteData = websiteTemplate
     .replace(WEB_PAGE_SPEC_FILE_TOKEN, `'${config.specFileEndpoint}'`)
     .replace(WEB_PAGE_LOGO_TOKEN, config.webLogoUrl)
@@ -380,7 +408,7 @@ function getAWSMockIntegrationResponse(statusCode, responseTemplates, responsePa
         },
       },
       requestTemplates: {
-        'application/json': '{"statusCode": 200}',
+        [APPLICATION_JSON]: '{"statusCode": 200}',
       },
       passthroughBehavior: 'when_no_match',
     },
@@ -405,7 +433,7 @@ function getCORSOptionsResponse() {
         200: {
           description: '200 response',
           content: {
-            'application/json': {
+            [APPLICATION_JSON]: {
               schema: {
                 $ref: '#/components/schemas/Empty',
               },
