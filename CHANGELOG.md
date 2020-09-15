@@ -1,3 +1,10 @@
+## [1.0.2](https://github.com/digio/oaat/compare/v1.0.1...v1.0.2) (2020-09-15)
+
+
+### Bug Fixes
+
+* **build:** add support for `x-mock-file` property in the build command ([5389b55](https://github.com/digio/oaat/commit/5389b55ab1d77233cee4decb859520e297a807ea))
+
 ## [1.0.1](https://github.com/digio/oaat/compare/v1.0.0...v1.0.1) (2020-09-14)
 
 
