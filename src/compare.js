@@ -1,7 +1,7 @@
 const diffDefault = require('jest-diff').default;
 const isEqual = require('lodash/isEqual'); // I'm not a fan of Lodash, but this will save a lot of time compared to re-implementing omit()
 const omit = require('lodash/omit'); // I'm not a fan of Lodash, but this will save a lot of time compared to re-implementing omit()
-const { fetchResponses, getExistingResponseFileData } = require('./record');
+const { fetchResponses } = require('./record');
 const logger = require('winston');
 
 const {
@@ -10,6 +10,7 @@ const {
   cloneDeep,
   getAbsSpecFilePath,
   getExampleObject,
+  getExistingResponseFileData,
   getFetchConfigForAPIEndpoints,
   getPathsToIgnore,
   readJsonFile,
@@ -158,6 +159,7 @@ function compareToSchema({ openapi, objB, res, showDiff }) {
 
   if (!isValid && showDiff) {
     logger.verbose('response', objB);
+    logger.error(`Invalid response for ${res.config.method} ${res.url} (${res.exampleName})`);
     logger.error(opError.toString());
   }
 

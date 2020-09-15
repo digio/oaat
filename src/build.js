@@ -1,10 +1,12 @@
 const { join } = require('upath');
 const logger = require('winston');
 const {
+  EXAMPLE_PROP_NAME,
+  IGNORE_PROPERTY_PROP_NAME,
   IGNORE_ENDPOINT_NAME,
+  MOCK_FILE_PROP,
   pipe,
   getAbsSpecFilePath,
-  getExampleObject,
   readJsonFile,
   traverse,
   validateSpecObj,
@@ -23,6 +25,7 @@ async function addGatewayInfo(specFile, server, config) {
   const specObj = readJsonFile(specFile);
   await validateSpecObj({ specObj }); // We have to validate before we try to read the file cntents
   const absSpecFilePath = getAbsSpecFilePath(specFile);
+  const destPath = getAbsSpecFilePath(config.outputFile ? config.outputFile : specFile);
   const serverUrl = server || specObj.servers[0].url;
 
   // define the data processing pipeline
@@ -45,7 +48,7 @@ async function addGatewayInfo(specFile, server, config) {
     },
   );
 
-  return pipeline({ specObj, serverUrl, specFile, absSpecFilePath, config });
+  return pipeline({ specObj, serverUrl, destPath, specFile, absSpecFilePath, config });
 }
 
 function setServerUrl(params) {
@@ -67,8 +70,8 @@ function decorateExistingEndpoints(params) {
 }
 
 function mockAPIEndpoints(params) {
-  const { specObj, config, serverUrl } = params;
-  const newConfig = { isMock: config.mock, isProxy: config.proxy, serverUrl };
+  const { specObj, config, destPath, serverUrl } = params;
+  const newConfig = { isMock: config.mock, isProxy: config.proxy, destPath, serverUrl };
   return Object.keys(specObj.paths).reduce(
     (acc, path) => ({ ...acc, ...transformEndpoint(newConfig, path, specObj.paths[path]) }),
     {},
@@ -102,13 +105,15 @@ function transformEndpoint(config, path, data) {
 function transformEndpointMethod(config, path, method, data) {
   if (config.isMock) {
     const newEndPoints = Object.keys(data.responses).reduce((acc, statusCode) => {
-      const mockConfig = mockEndpointMethodStatus(path, method, statusCode, data);
+      // We get back an array of configs, which could be empty
+      const mockConfigs = mockEndpointMethodStatus({ path, method, statusCode, data, destPath: config.destPath });
+
       // logger.debug('config', newPath, config);
-      if (!mockConfig) {
-        return acc;
-      }
-      const { newPath, apiConfig } = mockConfig;
-      acc[newPath] = { ...acc[newPath], ...apiConfig };
+
+      mockConfigs.forEach(({ newPath, apiConfig }) => {
+        acc[newPath] = { ...acc[newPath], ...apiConfig };
+      });
+
       return { ...acc };
     }, {});
     // logger.debug(newEndPoints);
@@ -121,36 +126,85 @@ function transformEndpointMethod(config, path, method, data) {
     return newEndPoints;
   }
 
-  // Else, the only thing we wand to do is have the web and swagger endpoints (not expose the sepcObj endpoints)
+  // Else, the only thing we wand to do is have the web and swagger endpoints (not expose the specObj endpoints)
   return {};
 }
 
-function mockEndpointMethodStatus(path, method, statusCode, data) {
+function mockEndpointMethodStatus(mockMethodParams) {
+  const { path, method, statusCode, data, destPath } = mockMethodParams;
+
   // If the response should be ignored, ignore it.
   if (data.responses[statusCode][IGNORE_ENDPOINT_NAME]) {
-    return;
+    logger.info(`Ignoring ${method.toUpperCase()} ${path}`);
+    return [];
   }
-
   const endpointName = statusCode === '200' ? path : `${path}/${statusCode}`;
-  const exampleObj = getExampleObject(data.responses[statusCode]); // get the first example object, if it exists
 
-  if (exampleObj && exampleObj.responseFile) {
-    logger.info(`Mocking '${method.toUpperCase()} ${endpointName}' with '${exampleObj.responseFile}'`);
+  // Use the x-mock-file prop instead of the x-examples
+  const mockFileObj = data.responses[statusCode][MOCK_FILE_PROP];
+
+  // the list of configs to create
+  let configs = [];
+
+  // If it is a string, great
+  if (typeof mockFileObj === 'string') {
+    logger.info(`Mocking '${method.toUpperCase()} ${endpointName}' with '${mockFileObj}'`);
+    configs.push({
+      pathName: endpointName,
+      responseData: readResponseFile(destPath, mockFileObj),
+      parameters: data.parameters,
+    });
   }
-  const responseData = exampleObj && exampleObj.responseFile ? require(join(__dirname, exampleObj.responseFile)) : '';
 
-  return {
-    newPath: endpointName,
+  // if it is an object, we need to build an array of responses.
+  // Object looks like this: { "endpointName": "responseFile", "endPoint2": ... }
+  if (typeof mockFileObj === 'object') {
+    const mockFiles = Object.entries(mockFileObj);
+
+    // This approach only makes sense for path-parameters. Anything else - body, query or header params - won't work.
+
+    configs = mockFiles.map(([pathName, responseFilePath]) => {
+      logger.info(`Mocking '${method.toUpperCase()} ${pathName}' with ${responseFilePath}`);
+      return {
+        pathName,
+        responseData: readResponseFile(destPath, responseFilePath),
+        parameters: [], // Set this to blank, as by using multiple mock responses, we are indicating that we have pre-filled the parameters.
+      };
+    });
+
+    // Also add the default config as an endpoint
+    logger.info(`Mocking '${method.toUpperCase()} ${endpointName}' with ${mockFiles[0][1]}`);
+    configs.push({ pathName: endpointName, responseData: mockFiles[0][1], parameters: data.parameters });
+  }
+
+  return configs.map(({ pathName, responseData, parameters }) => ({
+    newPath: pathName,
     apiConfig: {
       [method]: {
         ...data,
+        parameters,
         responses: {
-          [statusCode]: data.responses[statusCode],
+          [statusCode]: {
+            ...data.responses[statusCode],
+            // Remove the examples and custom headers
+            [MOCK_FILE_PROP]: undefined,
+            [EXAMPLE_PROP_NAME]: undefined,
+            [IGNORE_PROPERTY_PROP_NAME]: undefined,
+          },
         },
         ...getAWSMockIntegrationResponse(statusCode, { 'application/json': JSON.stringify(responseData) }),
       },
     },
-  };
+  }));
+}
+
+function readResponseFile(destPath, relResponseFilePath) {
+  try {
+    return require(join(destPath, relResponseFilePath));
+  } catch {
+    logger.debug(`Could not read ${destPath}${relResponseFilePath}`);
+    return '';
+  }
 }
 
 function proxyEndpointMethod(path, method, serverUrl, data) {

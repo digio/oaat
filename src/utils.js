@@ -9,6 +9,7 @@ const Enforcer = require('openapi-enforcer');
 const EXAMPLE_PROP_NAME = 'x-examples';
 const IGNORE_PROPERTY_PROP_NAME = 'x-test-ignore-paths';
 const IGNORE_ENDPOINT_NAME = 'x-ignore';
+const MOCK_FILE_PROP = 'x-mock-file';
 
 // Returns fetch config for calling all the endpoints
 function getFetchConfigForAPIEndpoints(params) {
@@ -382,6 +383,24 @@ function getAbsSpecFilePath(specFile) {
   return join(process.cwd(), dirname(specFile));
 }
 
+function getExistingResponseFileData(example, destPath) {
+  const responseFileName = example && example.responseFile;
+
+  if (!responseFileName) {
+    return null;
+  }
+
+  const absResponseFilePath = join(destPath, responseFileName);
+
+  // Attempt to load the previous response file for comparison, but it may not exist.
+  try {
+    return require(absResponseFilePath);
+  } catch (e) {
+    logger.debug(`Response file "${absResponseFilePath}" could not be loaded.`);
+    return null;
+  }
+}
+
 // Hacky way to clone JSON data
 function cloneDeep(obj) {
   return JSON.parse(JSON.stringify(obj));
@@ -405,6 +424,7 @@ module.exports = {
   cloneDeep,
   getAbsSpecFilePath,
   getExampleObject,
+  getExistingResponseFileData,
   getFetchConfigForAPIEndpoints,
   getLogAndConfig,
   getPathsToIgnore: getResponsePropertyPathsToIgnore,
@@ -416,5 +436,8 @@ module.exports = {
   validateSpecObj,
   writeJsonFile,
   writeOutputFile,
+  EXAMPLE_PROP_NAME,
+  IGNORE_PROPERTY_PROP_NAME,
   IGNORE_ENDPOINT_NAME,
+  MOCK_FILE_PROP,
 };

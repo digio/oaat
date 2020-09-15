@@ -200,6 +200,9 @@
   },
   "components": {
     "schemas": {
+      "Info": {
+        "type": "object"
+      },
       "Post": {
         "type": "object",
         "properties": {

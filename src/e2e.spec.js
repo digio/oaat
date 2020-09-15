@@ -191,7 +191,7 @@ describe('CLI', () => {
 
     it('and contains mock responses plus the website and spec', async () => {
       const outputFile = 'fixtures/output/buildMock1.json';
-      await runCommand(`build ./fixtures/threeExamples.json ./${outputFile} -m`);
+      await runCommand(`build --mock ./fixtures/threeExamples.json ./${outputFile} `);
 
       const result = require(`../${outputFile}`);
       expect(Object.keys(result.paths)).toMatchInlineSnapshot(`

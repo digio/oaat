@@ -6,7 +6,7 @@
 [![Coverage Status][coveralls-image]][coveralls-url]
 [![Downloads][downloads-image]][npm-url]
 
-Open API Spec tool for recording, linting & comparing API responses; building and deploying a spec to AWS API Gateway.
+**O**pen **A**PI-spec **A**WS **t**ool for recording, linting & comparing API responses; building and deploying a spec to AWS API Gateway.
 
 ## Table of Contents
 
@@ -70,7 +70,7 @@ properties to the OpenAPI spec file.
 The `x-examples` object is a custom field that allows for the description of multiple examples
 of inputs, and stores the corresponding response (for use in mocks and testing).
 
-`x-examples` is object, with each child-property being the name of an example. There must be at-least one
+`x-examples` is an object, with each child-property being the name of an example. There must be at-least one
 child-property example-name for `x-examples`.
 
 Each example-object can have the following properties:
@@ -284,6 +284,61 @@ Options:
   -h, --help           display help for command
 ```
 
+### Mocking
+
+API Gateway supports different kinds of integrations. One integration-type is "mock",
+whereby static responses are returned for any API requests. Mock integrations are useful
+for testing, documentation, or as a backup for the real API when things go wrong. 
+
+To create mock responses, add the `x-mock-file` property to each endpoint and specify the `-m`
+flag in the command.
+
+#### `path.method.responses.statusCode["x-mock-file"]`
+
+`x-mock-file` is either a `string` or an `object`, associating an endpoint with a response file.
+  
+When `x-mock-file` is a `string`, the value is a path to a response file, and the response-data is used
+regardless of the path-parameters supplied in the request.
+
+When `x-mock-file` is an `object`, the property-key is the API-path that is generated, and the value
+is a path to a response file (as above). In this mode, it is possible to generate multiple mock responses
+by specifying multiple API paths as property keys (see example below).
+
+##### Example
+
+```json
+"paths": {
+  "/posts/{id}": {
+    "post": {
+      ...      
+      "responses": {
+        "200": {
+          ...
+          "description": "String example",
+          "x-mock-file": "mock/foo.json"
+        }
+      }
+    }
+  },
+  "/users/{id}": {
+    "post": {
+      ...      
+      "responses": {
+        "200": {
+          ...
+          "description": "Object example:",
+          "x-mock-file": {
+            "/users/alexa": "mocks/alexa.json",           
+            "/users/david": "mocks/david.json"
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+
 ## Comparing
 
 Compares the earlier-recorded responses to the last responses for endpoints in an OpenAPI 3.x spec file.
@@ -325,7 +380,7 @@ module.exports = {
   record: {
 
     // Path to a subdirectory (relative to the spec file) that contains the response files
-    // If you do not wish to put mock files into a subdirectory, removeUnsedResponses is
+    // If you do not wish to put response files into a subdirectory, removeUnsedResponses is
     // automatically set to false to avoid deleting files from your specfile folder!
     responseBasePath: 'responses/',
 
@@ -373,14 +428,23 @@ module.exports = {
     syncExamples: true
   },
 
-  // Configuration for the `apig` command
-  apig: {
+  // Configuration for the `build` command
+  build: {
 
     // The path that will server the Swagger UI
     specUIEndpoint: '/',
 
     // The path that will serve the spec itself
     specFileEndpoint: '/open-api-spec.json',
+
+    // The value for the <title> element 
+    webTitle: 'My Company',
+    
+    // A logo for the website (shown in the top-left corner)
+    webLogoUrl: 'https://www.elitedangerous.com/img/logo-elite-dangerous-icon.c7206b1e.svg',
+
+    // A URI (URL or data:image/x-icon;base64 encode image) for the favicon
+    webFaviconHref: 'url or data:image/x-icon;base64',
   },
 };
 ```

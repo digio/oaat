@@ -55,6 +55,7 @@
                 }
               }
             },
+            "x-mock-file": "",
             "x-examples": {
               "default": {
                 "parameters": [
@@ -98,6 +99,7 @@
                 }
               }
             },
+            "x-mock-file": "",
             "x-examples": {
               "id_1": {
                 "parameters": [
@@ -124,6 +126,7 @@
                 }
               }
             },
+            "x-mock-file": "",
             "x-examples": {
               "badParam": {
                 "parameters": [

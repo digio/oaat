@@ -1,5 +1,12 @@
 /* eslint-disable @getify/proper-arrows/where */
-const { addParamsToFetchConfig, getLogAndConfig, getFetchConfigForAPIEndpoints, validateSpecObj } = require('./utils');
+const {
+  addParamsToFetchConfig,
+  getAbsSpecFilePath,
+  getExistingResponseFileData,
+  getLogAndConfig,
+  getFetchConfigForAPIEndpoints,
+  validateSpecObj,
+} = require('./utils');
 
 describe('utils', () => {
   describe('getFetchConfigForAPIEndpoints()', () => {
@@ -978,6 +985,27 @@ describe('utils', () => {
         // eslint-disable-next-line jest/no-conditional-expect,jest/no-try-expect
         expect(err.toString()).toMatch('One or more errors exist in');
       }
+    });
+  });
+
+  describe('getExistingResponseFileData()', () => {
+    it('should return the response file data for the responseFile specified in the example, when the file exists', () => {
+      const example = {
+        responseFile: 'responses/mock1.json',
+      };
+      const destPath = getAbsSpecFilePath('./fixtures/sample1.json'); // path relative to cwd()
+
+      expect(getExistingResponseFileData(example, destPath)).toEqual({
+        mock: 'number 1',
+      });
+    });
+
+    it('should return null when there is no responseFile property, or the propoerty is blank', () => {
+      const destPath = getAbsSpecFilePath('./fixtures/sample1.json'); // path relative to cwd()
+
+      expect(getExistingResponseFileData({}, destPath)).toEqual(null);
+      expect(getExistingResponseFileData({ responseFile: '' }, destPath)).toEqual(null);
+      expect(getExistingResponseFileData({ responseFile: 'non-existent.file' }, destPath)).toEqual(null);
     });
   });
 });

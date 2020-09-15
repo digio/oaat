@@ -71,7 +71,7 @@ program
     config.mock = cmd.mock;
     config.proxy = cmd.proxy;
 
-    const { addGatewayInfo } = require('./addGatewayInfo');
+    const { addGatewayInfo } = require('./build');
     try {
       await addGatewayInfo(jsonFile, serverUrl, config);
     } catch (err) {
@@ -83,7 +83,7 @@ program
   .command('compare <jsonFile> [serverUrl]')
   .description('Compares recorded responses (referenced by the spec file) to the latest responses')
   .option('-c, --config <file>', 'Config file to override default config')
-  .option('-m --compare-mode <mode>', 'Comparison mode: "value" (default), "type"')
+  .option('-m --compare-mode <mode>', 'Comparison mode: "value" (default), "type", "schema"')
   .option('-q, --quiet', 'no logging')
   .option('-v, --verbose', 'verbose logging')
   // eslint-disable-next-line @getify/proper-arrows/where

@@ -1,11 +1,5 @@
 /* eslint-disable @getify/proper-arrows/where */
-const {
-  fetchResponses,
-  getExistingResponseFileData,
-  validateResponses,
-  writeResponses,
-  writeResponseFileAndSpecRef,
-} = require('./record');
+const { fetchResponses, validateResponses, writeResponses, writeResponseFileAndSpecRef } = require('./record');
 const { getAbsSpecFilePath } = require('./utils');
 
 describe('record', () => {
@@ -129,30 +123,10 @@ describe('record', () => {
     });
   });
 
-  describe('getExistingResponseFileData()', () => {
-    it('should return the response file data for the responseFile specified in the example, when the file exists', () => {
-      const example = {
-        responseFile: 'responses/mock1.json',
-      };
-      const destPath = getAbsSpecFilePath('./fixtures/sample1.json'); // path relative to cwd()
-
-      expect(getExistingResponseFileData(example, destPath)).toEqual({
-        mock: 'number 1',
-      });
-    });
-
-    it('should return null when there is no responseFile property, or the propoerty is blank', () => {
-      const destPath = getAbsSpecFilePath('./fixtures/sample1.json'); // path relative to cwd()
-
-      expect(getExistingResponseFileData({}, destPath)).toEqual(null);
-      expect(getExistingResponseFileData({ responseFile: '' }, destPath)).toEqual(null);
-      expect(getExistingResponseFileData({ responseFile: 'non-existent.file' }, destPath)).toEqual(null);
-    });
-  });
-
   describe('writeResponseFileAndSpecRef(dryRun = true)', () => {
     it('should modify the API data with the responseFile name', () => {
-      const filePath = 'mocks/GET_api_{p1}-200_DEFAULT.json';
+      const filePath = '../mocks/GET_api_{p1}-200_DEFAULT.json';
+      const relPath = filePath;
       const data = 'not used for dry run';
       const specRef = {
         statusCode: 200,
@@ -169,7 +143,7 @@ describe('record', () => {
         dryRun: true,
       };
 
-      writeResponseFileAndSpecRef(filePath, data, specRef, config);
+      writeResponseFileAndSpecRef(filePath, relPath, data, specRef, config);
       expect(specRef.apiEndpoint.responses['200']['x-examples']).toEqual({
         default: { responseFile: '../mocks/GET_api_{p1}-200_DEFAULT.json' },
       });

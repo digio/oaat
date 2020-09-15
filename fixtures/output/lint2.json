@@ -276,6 +276,9 @@
           }
         }
       },
+      "Info": {
+        "type": "object"
+      },
       "NotFoundError": {
         "type": "object"
       },

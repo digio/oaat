@@ -1,16 +1,17 @@
-const { join, relative } = require('upath');
+const { join } = require('upath');
 const { readdirSync, lstatSync, unlinkSync } = require('fs');
 const fetch = require('node-fetch');
 const logger = require('winston');
 const {
   pipe,
+  addParamsToFetchConfig,
   concurrentFunctionProcessor,
   getAbsSpecFilePath,
   getExampleObject,
-  updateExampleObject,
+  getExistingResponseFileData,
   getFetchConfigForAPIEndpoints,
-  addParamsToFetchConfig,
   readJsonFile,
+  updateExampleObject,
   validateSpecObj,
   writeJsonFile,
   writeOutputFile,
@@ -148,10 +149,10 @@ function writeResponses(params) {
 
     if (create) {
       logger.info(`Creating response file ${responseFileName}`);
-      writeResponseFileAndSpecRef(absResponseFileName, res.response, res, config);
+      writeResponseFileAndSpecRef(absResponseFileName, relResponseFileName, res.response, res, config);
     } else if (update) {
       logger.info(`Updating response file ${responseFileName}`);
-      writeResponseFileAndSpecRef(absResponseFileName, res.response, res, config);
+      writeResponseFileAndSpecRef(absResponseFileName, relResponseFileName, res.response, res, config);
     } else {
       logger.info(`Response file unchanged: ${responseFileName}`);
     }
@@ -162,24 +163,6 @@ function writeResponses(params) {
     ...params,
     responseFiles,
   };
-}
-
-function getExistingResponseFileData(example, destPath) {
-  const responseFileName = example && example.responseFile;
-
-  if (!responseFileName) {
-    return null;
-  }
-
-  const absResponseFilePath = join(destPath, responseFileName);
-
-  // Attempt to load the previous response file for comparison, but it may not exist.
-  try {
-    return require(absResponseFilePath);
-  } catch (e) {
-    logger.debug(`Response file "${absResponseFilePath}" could not be loaded.`);
-    return null;
-  }
 }
 
 /**
@@ -225,12 +208,12 @@ function compareResponses(params) {
   return { ...response, update: true };
 }
 
-function writeResponseFileAndSpecRef(filePath, data, specRef, config) {
-  writeJsonFile(filePath, data, config);
+function writeResponseFileAndSpecRef(absFilePath, relFilePath, data, specRef, config) {
+  writeJsonFile(absFilePath, data, config);
 
   const ref = specRef.apiEndpoint.responses[specRef.statusCode];
   // The responseFile path should be relative to the API Spec path (not to this script)
-  updateExampleObject(ref, specRef.exampleName, 'responseFile', relative(__dirname, filePath));
+  updateExampleObject(ref, specRef.exampleName, 'responseFile', relFilePath);
 }
 
 function removeUnusedResponses(params) {
@@ -238,8 +221,8 @@ function removeUnusedResponses(params) {
   logger.verbose(`responseFiles ${responseFiles}`);
 
   // If there is no responseBasePath or config.removeUnusedResponses is falsey, bail.
-  if (!config.responseBasePath || !config.removeUnusedResponses) {
-    return;
+  if (!config.responseBasePath || !config.removeUnusedResponses || config.dryRun) {
+    return { ...params, deletedResponseFiles: [] };
   }
 
   // Iterate over the files in the destPath + responseBasePath directory, which are not in fileList
@@ -277,6 +260,7 @@ function findInDir(dir, filterFn, fileList = []) {
 }
 
 function lintSpecFile(params) {
+  logger.debug('About to lint...', params);
   if (params.config.andLint) {
     params = lintSpec(params);
   }
@@ -285,7 +269,6 @@ function lintSpecFile(params) {
 
 module.exports = {
   fetchResponses,
-  getExistingResponseFileData,
   recordCommand,
   validateResponses,
   writeResponses,

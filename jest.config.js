@@ -12,10 +12,10 @@ module.exports = {
   coverageDirectory: '<rootDir>/test-reports/coverage',
   coverageThreshold: {
     global: {
-      statements: 55,
+      statements: 50,
       branches: 50,
-      functions: 55,
-      lines: 55,
+      functions: 50,
+      lines: 50,
     },
   },
   testTimeout: 20000,
