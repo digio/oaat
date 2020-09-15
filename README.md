@@ -28,7 +28,7 @@ npm install -g oaat
 oaat --help
 ```
 
-**Note**: Node 10.x or higher runtime required.
+**Note**: Node 12.3 or higher runtime required.
 
 ## Usage
 
@@ -127,7 +127,7 @@ manually, along with the mock file for that response.**
       ],
       "requestBody": {
         "description": "Optional description in *Markdown*",
-        "required": true
+        "required": true,
         "content": {
           "application/json": {
             "schema": {
@@ -310,10 +310,8 @@ by specifying multiple API paths as property keys (see example below).
 "paths": {
   "/posts/{id}": {
     "post": {
-      ...      
       "responses": {
         "200": {
-          ...
           "description": "String example",
           "x-mock-file": "mock/foo.json"
         }
@@ -322,10 +320,8 @@ by specifying multiple API paths as property keys (see example below).
   },
   "/users/{id}": {
     "post": {
-      ...      
       "responses": {
         "200": {
-          ...
           "description": "Object example:",
           "x-mock-file": {
             "/users/alexa": "mocks/alexa.json",           
