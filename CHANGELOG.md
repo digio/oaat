@@ -1,3 +1,10 @@
+# [1.1.0](https://github.com/digio/oaat/compare/v1.0.2...v1.1.0) (2020-09-15)
+
+
+### Features
+
+* **build:** improve APIG spec output by removing unused schemas ([bf4fcb0](https://github.com/digio/oaat/commit/bf4fcb0bf4bcf9ed08242e919e42beb456d49bad))
+
 ## [1.0.2](https://github.com/digio/oaat/compare/v1.0.1...v1.0.2) (2020-09-15)
 
 
