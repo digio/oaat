@@ -20,4 +20,5 @@ module.exports = {
   },
   testTimeout: 20000,
   setupFiles: ['<rootDir>/config/testSetup.js'],
+  verbose: true,
 };

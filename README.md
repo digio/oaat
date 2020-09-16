@@ -435,7 +435,7 @@ module.exports = {
     // The path that will serve the Swagger UI
     specUIEndpoint: '/',
 
-    // The path that will serve the spec itself
+    // The path that will serve the original spec itself (not the API Gateway version of the spec)
     specFileEndpoint: '/open-api-spec.json',
 
     // The value for the <title> element 

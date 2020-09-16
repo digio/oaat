@@ -50,7 +50,15 @@ async function addGatewayInfo(specFile, server, config) {
     },
   );
 
-  return pipeline({ specObj, serverUrl, destPath, specFile, absSpecFilePath, config });
+  return pipeline({
+    specObj,
+    serverUrl,
+    destPath,
+    specFile,
+    originalSpecObj: cloneDeep(specObj),
+    absSpecFilePath,
+    config,
+  });
 }
 
 function setServerUrl(params) {
@@ -278,9 +286,10 @@ function addRequiredSchemas(params) {
 }
 
 function addSpecFileEndpoint(params) {
-  const { specObj, config } = params;
+  const { originalSpecObj, specObj, config } = params;
+
   // We can filter out the AMAZON_INTEGRATION_PROP properties, as they are quite large
-  const filteredSwagger = getSmallerSwaggerForWebsite(cloneDeep(specObj));
+  const filteredSwagger = getSmallerSwaggerForWebsite(originalSpecObj);
 
   specObj.paths[config.specFileEndpoint] = {
     get: {

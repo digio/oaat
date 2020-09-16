@@ -207,7 +207,9 @@ describe('CLI', () => {
 
     it('and ignores x-ignore endpoints', async () => {
       const outputFile = 'fixtures/output/buildMock2.json';
-      await runCommand(`build ./fixtures/threeExamplesWithIgnore.json ./${outputFile} -m`);
+      const output = await runCommand(`build --mock ./fixtures/threeExamplesWithIgnore.json ./${outputFile}`);
+
+      console.log(output);
 
       const result = require(`../${outputFile}`);
       expect(Object.keys(result.paths)).toMatchInlineSnapshot(`
@@ -217,6 +219,14 @@ describe('CLI', () => {
           "/",
         ]
       `);
+
+      // As proof that the /open-api-spec.json endpoint contains the original spec, look for "/posts" in the responseTemplate
+      // (which was ignored in this test-case)
+      expect(
+        result.paths['/open-api-spec.json'].get['x-amazon-apigateway-integration'].responses.default.responseTemplates[
+          'application/json'
+        ],
+      ).toContain('"/posts":{"get"');
     });
 
     it('should display an error when the spec is not valid', async () => {
