@@ -1,3 +1,10 @@
+## [1.1.1](https://github.com/digio/oaat/compare/v1.1.0...v1.1.1) (2020-09-16)
+
+
+### Bug Fixes
+
+* **build:** set specFileEndpoint to return the original spec ([005f934](https://github.com/digio/oaat/commit/005f934635bbeea105cb8e295e905e0247c0c59e))
+
 # [1.1.0](https://github.com/digio/oaat/compare/v1.0.2...v1.1.0) (2020-09-15)
 
 
