@@ -286,10 +286,16 @@ function addRequiredSchemas(params) {
 }
 
 function addSpecFileEndpoint(params) {
-  const { originalSpecObj, specObj, config } = params;
+  const { originalSpecObj, specObj, config, serverUrl } = params;
 
   // We can filter out the AMAZON_INTEGRATION_PROP properties, as they are quite large
   const filteredSwagger = getSmallerSwaggerForWebsite(originalSpecObj);
+
+  // Add the serverUrl to the list of servers if it is not already in the list
+  const urls = new Set(filteredSwagger.servers.map((i) => i.url));
+  if (!urls.has(serverUrl)) {
+    filteredSwagger.servers.unshift({ url: serverUrl });
+  }
 
   specObj.paths[config.specFileEndpoint] = {
     get: {

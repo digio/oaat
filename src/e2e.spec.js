@@ -205,7 +205,7 @@ describe('CLI', () => {
       `);
     });
 
-    it('and ignores x-ignore endpoints', async () => {
+    it('and ignores x-ignore endpoints and contains the original spec', async () => {
       const outputFile = 'fixtures/output/buildMock2.json';
       const output = await runCommand(`build --mock ./fixtures/threeExamplesWithIgnore.json ./${outputFile}`);
 
@@ -227,6 +227,25 @@ describe('CLI', () => {
           'application/json'
         ],
       ).toContain('"/posts":{"get"');
+    });
+
+    it('and the original-spec inside API Gateway should have the supplied-server as the first in the list', async () => {
+      const outputFile = 'fixtures/output/buildMock3.json';
+      await runCommand(`build --mock ./fixtures/threeExamples.json ./${outputFile} https://first.server.com `);
+
+      const result = require(`../${outputFile}`);
+      const apigSpec = JSON.parse(
+        result.paths['/open-api-spec.json'].get['x-amazon-apigateway-integration'].responses.default.responseTemplates[
+          'application/json'
+        ].replace(/\\\$ref/g, '$ref'), // Need to unescape the $ in $ref (we had to escape it for API Gateway)
+      );
+
+      // We don't read the servers value, but the value of paths[/open-api-spec.json]
+      expect(apigSpec.servers.length).toEqual(2);
+      expect(apigSpec.servers).toEqual([
+        { url: 'https://first.server.com' },
+        { url: 'https://jsonplaceholder.typicode.com' },
+      ]);
     });
 
     it('should display an error when the spec is not valid', async () => {
