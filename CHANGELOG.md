@@ -1,3 +1,10 @@
+# [1.2.0](https://github.com/digio/oaat/compare/v1.1.1...v1.2.0) (2020-09-16)
+
+
+### Features
+
+* **build:** add the supplied-server to the list of servers in the APIG spec endpoint ([827076f](https://github.com/digio/oaat/commit/827076fa26c36bbcadda0cd6a21cf677b11e9186))
+
 ## [1.1.1](https://github.com/digio/oaat/compare/v1.1.0...v1.1.1) (2020-09-16)
 
 
