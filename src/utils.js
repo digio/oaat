@@ -29,7 +29,7 @@ function getFetchConfigForAPIEndpoints(params) {
 function concurrentFunctionProcessor(fnArray, maxConcurrent = 15) {
   return new Promise((resolve) => {
     // https://nodesource.com/blog/understanding-streams-in-nodejs/
-    // Create a stream from an array of functions, that execute those functions
+    // Create a stream from an array of functions, then execute those functions
     // until we reach the maxConcurrent limit. When a function has resolved,
     // we can resume the stream and process the next function.
     const { Readable } = require('stream');
@@ -94,6 +94,7 @@ function transformEndpointMethod(path, method, data) {
 
 // Iterate over the EXAMPLE_PROP_NAME, to allow multiple examples for each path-method-response
 function transformEndpointMethodResponse(path, method, statusCode, data) {
+  // To cater for the "200" response endpoints that don't NEED an explicit x-examples object, we use { default: {} };
   const newEndPoints = Object.keys(data.responses[statusCode][EXAMPLE_PROP_NAME] || { default: {} })
     .map((exampleName, exampleIndex) =>
       buildFetchConfigWithoutParameters(path, method, Number(statusCode), exampleName, exampleIndex, data),
@@ -109,6 +110,7 @@ function transformEndpointMethodResponse(path, method, statusCode, data) {
 // If there parameters but no EXAMPLE_PROP_NAME in the response[statusCode], then we don't build it.
 function buildFetchConfigWithoutParameters(path, method, statusCode, exampleName, exampleIndex, data) {
   updateExampleObject(data.responses[statusCode], exampleName); // Make sure we have an examples object
+
   const examples = data.responses[statusCode][EXAMPLE_PROP_NAME];
 
   // Define config base-object, which we will change as needed
@@ -117,7 +119,7 @@ function buildFetchConfigWithoutParameters(path, method, statusCode, exampleName
     query: {}, // Needed so that we can build query parameters
     url: path,
     config: { method },
-    apiEndpoint: data,
+    apiEndpoint: data, // everything under paths[url][method]
     expectedStatusCode: Number(statusCode),
     existingResponseFile: examples[exampleName].responseFile, // This is useful for the integration tests
     ignorePathsList: data.responses[statusCode][IGNORE_PROPERTY_PROP_NAME] || [], // Used by integration tests
@@ -158,10 +160,10 @@ const paramTypeMapping = {
     fc.config.body = JSON.stringify(paramValue);
     return fc;
   },
-  query: (fc, paramValue, queryParam) => {
+  query: (fc, paramValue, paramKey) => {
     // If we get a null value, it means there is no value for the query string param
     if (paramValue !== null) {
-      fc.query[queryParam] = paramValue;
+      fc.query[paramKey] = paramValue;
     }
     return fc;
   },
@@ -177,6 +179,9 @@ const paramTypeMapping = {
     Object.assign(fc.config.headers, { [paramKey]: paramValue });
     return fc;
   },
+  cookie: () => {
+    throw new Error('Cookies are not implement. Pull request welcome.');
+  },
 };
 /* eslint-enable @getify/proper-arrows/where */
 
@@ -190,16 +195,32 @@ const paramTypeMapping = {
  */
 async function addParamsToFetchConfig(params) {
   // console.log('add', fetchConfigs );
-  const { fetchConfigs, config, serverUrl, absSpecFilePath } = params;
+  const { fetchConfigs, serverUrl, absSpecFilePath } = params;
+  const { simultaneousRequests } = params.config;
 
   const newConfigs = await concurrentFunctionProcessor(
     fetchConfigs.map((fconfig) => () => resolveFetchConfigParams({ fconfig, serverUrl, absSpecFilePath })),
-    config.simultaneousRequests,
+    simultaneousRequests,
   );
 
-  logger.debug('addParamsToFetchConfig Params', newConfigs);
+  // Add the security info, if required
+  const configsWithSecurity = await addSecurityConfig({ ...params, fetchConfigs: newConfigs });
 
-  return { ...params, fetchConfigs: newConfigs };
+  // Last step, convert fconfig.query into a URL
+
+  // In the case where we have query parameters, append them to the url
+  // We can't do this directly in the paramTypeMapping.query() function because
+  // we don't know when to use '?' or '&' until we know all of the query params.
+  const finalConfigs = configsWithSecurity.map((fconfig) => {
+    if (Object.keys(fconfig.query).length) {
+      fconfig.url += `?${qs.stringify(fconfig.query)}`;
+    }
+    return fconfig;
+  });
+
+  logger.debug('addParamsToFetchConfig Params', finalConfigs);
+
+  return { ...params, fetchConfigs: finalConfigs };
 }
 
 async function resolveFetchConfigParams(params) {
@@ -219,6 +240,10 @@ async function resolveFetchConfigParams(params) {
         absSpecFilePath,
       );
       fconfig = paramTypeMapping[paramType](fconfig, paramValue, pathParam);
+
+      // Add the parameter value to the fconfig.resolvedParams array
+      fconfig.resolvedParams = fconfig.resolvedParams || [];
+      fconfig.resolvedParams[index] = paramValue;
     }),
   );
 
@@ -230,11 +255,7 @@ async function resolveFetchConfigParams(params) {
       absSpecFilePath,
     );
     fconfig = paramTypeMapping.body(fconfig, paramValue);
-  }
-
-  // In the case where we have query parameters, append them to the url
-  if (Object.keys(fconfig.query).length) {
-    fconfig.url += `?${qs.stringify(fconfig.query)}`;
+    fconfig.resolvedRequestBody = paramValue;
   }
 
   return fconfig;
@@ -249,16 +270,100 @@ function getParamValue(serverUrl, inputObj, absSpecFilePath) {
   if (inputObj.value !== undefined) {
     return inputObj.value;
   }
-  throw new Error(
-    `${EXAMPLE_PROP_NAME}.example.parameters object must contain a \`script\` OR \`value\` property. Received: ${JSON.stringify(
-      inputObj,
-    )}`,
-  );
+  throw new Error(`Object must contain a \`script\` OR \`value\` property. Received: ${JSON.stringify(inputObj)}`);
 }
 
 /**
+ * Security can be specified at the global level, or the endpoint level.
+ * Once we work out whether an endpoint requires security, we need to
+ * add it to the fetch config.
+ * @param params
+ * @returns fetchConfigs
+ */
+async function addSecurityConfig(params) {
+  const { fetchConfigs, specObj, config, serverUrl, absSpecFilePath } = params;
+  const globalSecurity = specObj.security;
+  const securityKeyValues = config.securitySchemes;
+
+  // If there are no securitySchemes, don't do anything
+  if (!(specObj.components && specObj.components.securitySchemes)) {
+    return fetchConfigs;
+  }
+
+  const securitySchemes = specObj.components.securitySchemes;
+
+  // Loop over the endpoints, looking for security;
+  const newConfigs = await Promise.all(
+    fetchConfigs.map((fconfig) =>
+      updateConfigWithSecurityScheme({
+        fetchConfig: fconfig,
+        securitySchemes,
+        apiSecurity: fconfig.apiEndpoint.security || globalSecurity,
+        securityKeyValues,
+        serverUrl,
+        absSpecFilePath,
+      }),
+    ),
+  );
+
+  return newConfigs;
+}
+
+/**
+ * Resolves the value/script
+ * @param secParams.fetchConfig
+ * @param secParams.securitySchemes
+ * @param secParams.secSchema
+ * @param secParams.securityKeyValues
+ * @param secParams.serverUrl
+ * @param secParams.absSpecFilePath
+ * @return {*}
+ */
+async function updateConfigWithSecurityScheme(secParams) {
+  let { fetchConfig, securitySchemes, apiSecurity, securityKeyValues, serverUrl, absSpecFilePath } = secParams;
+  if (!apiSecurity || !Array.isArray(apiSecurity) || apiSecurity.length === 0) {
+    return fetchConfig;
+  }
+
+  const selectedScheme = apiSecurity[0];
+
+  // The selectedScheme is a map of schemes. Loop over each scheme-key
+  await Promise.all(
+    Object.keys(selectedScheme).map(async (schemeName) => {
+      const schemaConfig = securitySchemes[schemeName];
+      logger.debug(`Resolving ${schemeName} in securitySchemes, ${JSON.stringify(securityKeyValues)}`);
+
+      // TODO: try..catch to return a more helpful error
+      const securityValue = await getParamValue(serverUrl, securityKeyValues[schemeName], absSpecFilePath);
+
+      fetchConfig = securityTypeMapping[schemaConfig.type](schemaConfig, securityValue, fetchConfig);
+    }),
+  );
+
+  return fetchConfig;
+}
+
+/* eslint-disable @getify/proper-arrows/where */
+const securityTypeMapping = {
+  http: (secConfig, securityValue, fetchConfig) => {
+    const scheme = (secConfig.scheme || '').toLowerCase();
+    if (scheme === 'bearer') {
+      return paramTypeMapping.header(fetchConfig, `Bearer ${securityValue}`, 'Authorization');
+    }
+    if (scheme === 'basic') {
+      return paramTypeMapping.header(fetchConfig, `Basic ${securityValue}`, 'Authorization');
+    }
+    return fetchConfig; // default
+  },
+  apiKey: (secConfig, securityValue, fetchConfig) => {
+    const paramType = secConfig.in; // This can be "header", "query" or "cookie". Only header and query are implemented at the moment (cookie should be avoided)
+    return paramTypeMapping[paramType](fetchConfig, securityValue, secConfig.name);
+  },
+};
+
+/**
  * Gets the example from the object, or returns undefined.
- * @param obj           The api-spec response-status object (path.method.responses.status)
+ * @param responseStatusObj  The api-spec response-status object (path.method.responses.status)
  * @param exampleName   The name of the example
  * @return {any}        The example object, or undefined
  */
@@ -278,8 +383,8 @@ function getExampleObject(responseStatusObj, exampleName) {
  * creating the example object if necessary, along with a key and value if provided
  * @param {object} responseStatusObj  path.method.responses.status object
  * @param {string} exampleName        Name of the example
- * @param {string} key                Optional key
- * @param {object} value              Optional value
+ * @param {string} [key]                Optional key
+ * @param {object} [value]              Optional value
  */
 function updateExampleObject(responseStatusObj, exampleName, key, value) {
   if (!responseStatusObj[EXAMPLE_PROP_NAME]) {
@@ -319,25 +424,42 @@ function writeJsonFile(fileName, data, config) {
 function getLogAndConfig(commandName, cmd) {
   const { configureLogger } = require('./logger');
   const log = configureLogger({ logLevel: cmd.verbose ? 'verbose' : 'info', silent: Boolean(cmd.quiet) });
+
   log.debug('command args', cmd);
 
   // Read the default config file
   const defaultConfig = require('./defaultConfig');
-  const config = { ...defaultConfig[commandName], ...defaultConfig.global };
+  const config = { ...defaultConfig[commandName], ...defaultConfig.global, securitySchemes: {} };
 
   // If a config file has been specified, try to merge it into the defaultConfig
   if (cmd.config) {
     try {
       const merge = require('lodash/merge');
       const externalConfig = require(join(process.cwd(), cmd.config));
-      merge(config, { ...externalConfig[commandName], ...externalConfig.global });
+      merge(config, {
+        ...externalConfig[commandName],
+        ...externalConfig.global,
+        securitySchemes: { ...config.securitySchemes, ...externalConfig.securitySchemes },
+      });
     } catch (err) {
       log.error('Could not load specified config file', err);
     }
   }
 
+  config.verbose = cmd.verbose;
   config.dryRun = Boolean(cmd.dryRun);
   config.outputFile = cmd.output;
+
+  // Add the security tokens from the command line to the config, if they exist
+  if (cmd.secTokens) {
+    config.securitySchemes = config.securitySchemes || {};
+    // Split the tokens into key-value strings, then split again and add to securitySchemes
+    const tokens = cmd.secTokens.split(',');
+    tokens.forEach((keyValue) => {
+      const [key, value] = keyValue.split('=');
+      config.securitySchemes[key] = { value };
+    });
+  }
 
   log.debug('config', config);
 
@@ -418,6 +540,10 @@ async function validateSpecObj(params) {
   return { ...params, openapi };
 }
 
+function isSuccessStatusCode(statusCodeNumber) {
+  return statusCodeNumber >= 200 && statusCodeNumber < 300;
+}
+
 module.exports = {
   addParamsToFetchConfig,
   concurrentFunctionProcessor,
@@ -428,6 +554,7 @@ module.exports = {
   getFetchConfigForAPIEndpoints,
   getLogAndConfig,
   getPathsToIgnore: getResponsePropertyPathsToIgnore,
+  isSuccessStatusCode,
   pipe,
   readJsonFile,
   returnExitCode,

@@ -205,7 +205,7 @@ describe('Lint', () => {
                   },
                   'x-examples': {
                     default: {
-                      parameters: [{ value: 1234 }],
+                      parameters: [{ script: 'scriptValue1.js' }],
                       requestBody: { script: 'scriptValue2.js' },
                     },
                   },
@@ -226,7 +226,7 @@ describe('Lint', () => {
         expect.objectContaining({
           examples: {
             default: {
-              value: 1234,
+              value: 'async value 1',
             },
           },
         }),
@@ -237,6 +237,73 @@ describe('Lint', () => {
             default: {
               value: 'async value 2',
               description: 'Example request body',
+            },
+          },
+        }),
+      );
+    });
+
+    it('should resolve the requestBody $ref and add the examples to it', async () => {
+      const specObj = {
+        paths: {
+          '/posts': {
+            get: {
+              tags: ['posts'],
+              operationId: 'getPosts',
+              summary: 'Get all available posts',
+              requestBody: {
+                $ref: '#/components/requestBodies/BodyInput',
+              },
+              responses: {
+                200: {
+                  description: 'successful operation',
+                  content: {
+                    'application/json': {
+                      schema: {
+                        type: 'array',
+                        items: {
+                          $ref: '#/components/schemas/Post',
+                        },
+                      },
+                    },
+                  },
+                  'x-examples': {
+                    default: {
+                      requestBody: { value: { clientId: 123 } },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+        components: {
+          requestBodies: {
+            BodyInput: {
+              description: 'Example request body',
+              content: {
+                'application/json': {
+                  schema: {
+                    $ref: '#/components/schemas/Info',
+                  },
+                },
+              },
+            },
+          },
+        },
+      };
+
+      const config = {
+        syncExamples: true,
+      };
+      const absSpecFilePath = '../fixtures';
+
+      const { specObj: output } = await syncExamples({ specObj, absSpecFilePath, config });
+      expect(output.components.requestBodies.BodyInput.content['application/json']).toEqual(
+        expect.objectContaining({
+          examples: {
+            default: {
+              value: { clientId: 123 },
             },
           },
         }),

@@ -573,6 +573,7 @@ describe('utils', () => {
         fetchConfigs: input,
         serverUrl: 'https://example.com/',
         config,
+        specObj: {},
       });
       expect(fetchConfigs).toEqual([
         {
@@ -632,6 +633,7 @@ describe('utils', () => {
         fetchConfigs: input,
         serverUrl: 'https://example.com/',
         config,
+        specObj: {},
       });
       expect(fetchConfigs).toEqual([
         expect.objectContaining({
@@ -685,6 +687,7 @@ describe('utils', () => {
         fetchConfigs: input,
         serverUrl: 'https://example.com/',
         config,
+        specObj: {},
       });
       expect(fetchConfigs).toEqual([
         expect.objectContaining({
@@ -756,6 +759,7 @@ describe('utils', () => {
         fetchConfigs: input,
         serverUrl: 'https://example.com/',
         config,
+        specObj: {},
       });
       expect(fetchConfigs).toEqual([
         expect.objectContaining({
@@ -821,6 +825,7 @@ describe('utils', () => {
         fetchConfigs: input,
         serverUrl: 'https://example.com/',
         config,
+        specObj: {},
       });
       expect(fetchConfigs).toEqual([
         expect.objectContaining({
@@ -894,6 +899,7 @@ describe('utils', () => {
         serverUrl: 'https://example.com/',
         absSpecFilePath,
         config,
+        specObj: {},
       });
       expect(fetchConfigs).toEqual([
         expect.objectContaining({
@@ -906,6 +912,333 @@ describe('utils', () => {
         }),
       ]);
     });
+
+    describe('with security', () => {
+      it('should add an Authorization header when the API has security with type http and scheme bearer', async () => {
+        const input = [
+          {
+            path: '/api',
+            query: {},
+            url: '/api',
+            config: { method: 'get' },
+            apiEndpoint: {
+              security: [{ scheme1: [] }],
+              responses: {
+                200: {
+                  description: 'Successful Operation',
+                },
+              },
+            },
+            expectedStatusCode: 200,
+            existingResponseFile: undefined,
+            ignorePathsList: [],
+            exampleName: 'default',
+            exampleIndex: 0,
+          },
+        ];
+        // The securitySchemes key contains the user-specified security values
+        const config = { simultaneousRequests: 15, securitySchemes: { scheme1: { value: 'abc123' } } };
+        const specObj = {
+          components: {
+            securitySchemes: {
+              scheme1: {
+                type: 'http',
+                scheme: 'bearer',
+              },
+            },
+          },
+        };
+
+        const { fetchConfigs } = await addParamsToFetchConfig({
+          fetchConfigs: input,
+          serverUrl: 'https://example.com/',
+          config,
+          specObj,
+        });
+        expect(fetchConfigs).toEqual([
+          {
+            path: '/api',
+            query: {},
+            url: '/api',
+            config: { method: 'get', headers: { Authorization: 'Bearer abc123' } }, // <---
+            apiEndpoint: input[0].apiEndpoint,
+            expectedStatusCode: 200,
+            existingResponseFile: undefined,
+            ignorePathsList: [],
+            exampleName: 'default',
+            exampleIndex: 0,
+          },
+        ]);
+      });
+
+      it('should add an Authorization header when the API has security with type http and scheme basic', async () => {
+        const input = [
+          {
+            path: '/api',
+            query: {},
+            url: '/api',
+            config: { method: 'get' },
+            apiEndpoint: {
+              security: [{ scheme1: [] }],
+              responses: {
+                200: {
+                  description: 'Successful Operation',
+                },
+              },
+            },
+            expectedStatusCode: 200,
+            existingResponseFile: undefined,
+            ignorePathsList: [],
+            exampleName: 'default',
+            exampleIndex: 0,
+          },
+        ];
+        // The securitySchemes key contains the user-specified security values
+        const config = { simultaneousRequests: 15, securitySchemes: { scheme1: { value: 'abc123' } } };
+        const specObj = {
+          components: {
+            securitySchemes: {
+              scheme1: {
+                type: 'http',
+                scheme: 'basic',
+              },
+            },
+          },
+        };
+
+        const { fetchConfigs } = await addParamsToFetchConfig({
+          fetchConfigs: input,
+          serverUrl: 'https://example.com/',
+          config,
+          specObj,
+        });
+        expect(fetchConfigs).toEqual([
+          {
+            path: '/api',
+            query: {},
+            url: '/api',
+            config: { method: 'get', headers: { Authorization: 'Basic abc123' } }, // <---
+            apiEndpoint: input[0].apiEndpoint,
+            expectedStatusCode: 200,
+            existingResponseFile: undefined,
+            ignorePathsList: [],
+            exampleName: 'default',
+            exampleIndex: 0,
+          },
+        ]);
+      });
+
+      it('should add an API key header when the API has global security with type apiKey and format "header", from a script', async () => {
+        const input = [
+          {
+            path: '/api',
+            query: {},
+            url: '/api',
+            config: { method: 'get' },
+            apiEndpoint: {
+              // Using global security
+              responses: {
+                200: {
+                  description: 'Successful Operation',
+                },
+              },
+            },
+            expectedStatusCode: 200,
+            existingResponseFile: undefined,
+            ignorePathsList: [],
+            exampleName: 'default',
+            exampleIndex: 0,
+          },
+        ];
+        // The securitySchemes key contains the user-specified security values
+        const config = {
+          simultaneousRequests: 15,
+          securitySchemes: { scheme1: { script: '../fixtures/scriptValue1.js' } },
+        };
+        const specObj = {
+          security: [{ scheme1: [] }],
+          components: {
+            securitySchemes: {
+              scheme1: {
+                type: 'apiKey',
+                in: 'header',
+                name: 'x-api-key',
+              },
+            },
+          },
+        };
+
+        const { fetchConfigs } = await addParamsToFetchConfig({
+          fetchConfigs: input,
+          serverUrl: 'https://example.com/',
+          config,
+          specObj,
+          absSpecFilePath: '../fixtures', // <---
+        });
+        expect(fetchConfigs).toEqual([
+          {
+            path: '/api',
+            query: {},
+            url: '/api',
+            config: { method: 'get', headers: { 'x-api-key': 'async value 1' } }, // <---
+            apiEndpoint: input[0].apiEndpoint,
+            expectedStatusCode: 200,
+            existingResponseFile: undefined,
+            ignorePathsList: [],
+            exampleName: 'default',
+            exampleIndex: 0,
+          },
+        ]);
+      });
+
+      it('should add an API key query string when the API has global security with type apiKey and format "header", from a script', async () => {
+        const input = [
+          {
+            path: '/api',
+            query: {},
+            url: '/api',
+            config: { method: 'get' },
+            apiEndpoint: {
+              // Using global security
+              responses: {
+                200: {
+                  description: 'Successful Operation',
+                  'x-examples': {
+                    default: {
+                      parameters: [{ value: 'queryParamValue1' }],
+                    },
+                  },
+                },
+              },
+              parameters: [
+                {
+                  name: 'q1',
+                  in: 'query',
+                  description: 'query param',
+                  required: true,
+                  schema: {
+                    type: 'string',
+                  },
+                },
+              ],
+            },
+            expectedStatusCode: 200,
+            existingResponseFile: undefined,
+            ignorePathsList: [],
+            exampleName: 'default',
+            exampleIndex: 0,
+          },
+        ];
+        // The securitySchemes key contains the user-specified security values
+        const config = {
+          simultaneousRequests: 15,
+          securitySchemes: { scheme1: { script: '../fixtures/scriptValue1.js' } },
+        };
+        const specObj = {
+          security: [{ scheme1: [] }],
+          components: {
+            securitySchemes: {
+              scheme1: {
+                type: 'apiKey',
+                in: 'query',
+                name: 'secret',
+              },
+            },
+          },
+        };
+
+        const { fetchConfigs } = await addParamsToFetchConfig({
+          fetchConfigs: input,
+          serverUrl: 'https://example.com/',
+          config,
+          specObj,
+          absSpecFilePath: '../fixtures',
+        });
+        expect(fetchConfigs).toEqual([
+          {
+            path: '/api',
+            query: {
+              q1: 'queryParamValue1',
+              secret: 'async value 1',
+            },
+            resolvedParams: ['queryParamValue1'],
+            url: '/api?q1=queryParamValue1&secret=async%20value%201', // <--- (not very secret ¯\_(ツ)_/¯ )
+            config: { method: 'get' },
+            apiEndpoint: input[0].apiEndpoint,
+            expectedStatusCode: 200,
+            existingResponseFile: undefined,
+            ignorePathsList: [],
+            exampleName: 'default',
+            exampleIndex: 0,
+          },
+        ]);
+      });
+
+      it('should add multiple security schemes when they are specified', async () => {
+        const input = [
+          {
+            path: '/api',
+            query: {},
+            url: '/api',
+            config: { method: 'get' },
+            apiEndpoint: {
+              security: [{ scheme1: [], scheme2: [] }],
+              responses: {
+                200: {
+                  description: 'Successful Operation',
+                },
+              },
+            },
+            expectedStatusCode: 200,
+            existingResponseFile: undefined,
+            ignorePathsList: [],
+            exampleName: 'default',
+            exampleIndex: 0,
+          },
+        ];
+        // The securitySchemes key contains the user-specified security values
+        const config = {
+          simultaneousRequests: 15,
+          securitySchemes: { scheme1: { value: 'abc123' }, scheme2: { value: 'xyz789' } },
+        };
+        const specObj = {
+          components: {
+            securitySchemes: {
+              scheme1: {
+                type: 'http',
+                scheme: 'bearer',
+              },
+              scheme2: {
+                type: 'apiKey',
+                in: 'header',
+                name: 'x-api-key',
+              },
+            },
+          },
+        };
+
+        const { fetchConfigs } = await addParamsToFetchConfig({
+          fetchConfigs: input,
+          serverUrl: 'https://example.com/',
+          config,
+          specObj,
+        });
+        expect(fetchConfigs).toEqual([
+          {
+            path: '/api',
+            query: {},
+            url: '/api',
+            config: { method: 'get', headers: { Authorization: 'Bearer abc123', 'x-api-key': 'xyz789' } }, // <---
+            apiEndpoint: input[0].apiEndpoint,
+            expectedStatusCode: 200,
+            existingResponseFile: undefined,
+            ignorePathsList: [],
+            exampleName: 'default',
+            exampleIndex: 0,
+          },
+        ]);
+      });
+    });
   });
 
   describe('getLogAndConfig()', () => {
@@ -917,6 +1250,7 @@ describe('utils', () => {
       expect(config).toEqual({
         dryRun: false,
         outputFile: undefined,
+        securitySchemes: {},
         simultaneousRequests: 15,
         sortComponentsAlphabetically: true,
         sortPathsAlphabetically: true,
@@ -936,6 +1270,29 @@ describe('utils', () => {
         responseFilenameFn: expect.any(Function),
         outputFile: undefined,
         removeUnusedResponses: true,
+        securitySchemes: {},
+        simultaneousRequests: 15,
+        updateResponseWhenInexactMatch: true,
+        updateResponseWhenTypesMatch: true,
+      });
+    });
+
+    it('should include the security tokens from the command line, if present', () => {
+      const commandData = { secTokens: 'foo=bar,car=tar' };
+      const { log, config } = getLogAndConfig('record', commandData);
+
+      expect(typeof log.info).toEqual('function');
+      expect(config).toEqual({
+        andLint: true,
+        dryRun: false,
+        responseBasePath: 'responses/',
+        responseFilenameFn: expect.any(Function),
+        outputFile: undefined,
+        removeUnusedResponses: true,
+        securitySchemes: {
+          foo: { value: 'bar' },
+          car: { value: 'tar' },
+        },
         simultaneousRequests: 15,
         updateResponseWhenInexactMatch: true,
         updateResponseWhenTypesMatch: true,
@@ -956,6 +1313,7 @@ describe('utils', () => {
         responseFilenameFn: expect.any(Function),
         outputFile: undefined,
         removeUnusedResponses: false, // <-- from altConfig.js
+        securitySchemes: {},
         simultaneousRequests: 15,
         updateResponseWhenInexactMatch: true,
         updateResponseWhenTypesMatch: true,

@@ -1,25 +1,27 @@
 const {
   pipe,
+  addParamsToFetchConfig,
   readJsonFile,
   writeOutputFile,
   getAbsSpecFilePath,
   getFetchConfigForAPIEndpoints,
   getExampleObject,
-  addParamsToFetchConfig,
+  isSuccessStatusCode,
   validateSpecObj,
 } = require('./utils');
 const logger = require('winston');
 
-async function lintCommand(specFile, config) {
+async function lintCommand(specFile, server, config) {
   const specObj = readJsonFile(specFile);
   const absSpecFilePath = getAbsSpecFilePath(specFile);
+  const serverUrl = server || specObj.servers[0].url;
 
   // Read the file, lint it, write it
   const pipeline = pipe(validateSpecObj, lintSpec, writeOutputFile, () => {
     logger.info('Linting complete.');
   });
 
-  return pipeline({ specObj, specFile, absSpecFilePath, config });
+  return pipeline({ specObj, serverUrl, specFile, absSpecFilePath, config });
 }
 
 function lintSpec(params) {
@@ -51,6 +53,11 @@ function sortChildKeys(obj, childProp) {
     .reduce((newDefs, key) => ({ ...newDefs, [key]: obj[childProp][key] }), {});
 }
 
+/**
+ * Uses the x-examples object to generate an Open API Spec `examples` object
+ * @param params
+ * @return {Promise<*>}
+ */
 async function syncExamples(params) {
   const { specObj, config, fetchConfigs: existingFetchConfig } = params;
   let fetchConfigs = existingFetchConfig;
@@ -71,7 +78,8 @@ async function syncExamples(params) {
   fetchConfigs.forEach((fc) => {
     const example = getExampleObject(fc.apiEndpoint.responses[fc.expectedStatusCode], fc.exampleName);
 
-    if (!example) {
+    // If there is no example, or the example is for a non-2xx response, ignore it
+    if (!example || !isSuccessStatusCode(Number(fc.expectedStatusCode))) {
       return;
     }
 
@@ -82,21 +90,39 @@ async function syncExamples(params) {
       specRef.parameters.forEach((param, i) => {
         param.examples = param.examples || {};
         param.examples[fc.exampleName] = param.examples[fc.exampleName] || {};
-        param.examples[fc.exampleName].value = example.parameters[i].value;
+        param.examples[fc.exampleName].value = fc.resolvedParams[i];
       });
     }
 
     if (specRef.requestBody && example.requestBody) {
       // Note: Pointing directly to the application/json content!
-      const specExamples = specRef.requestBody.content['application/json'];
+      const isRequestRef = specRef.requestBody.$ref;
 
+      // // It is risky to update a shared $ref, as each $ref-user could have examples with names that over-write the other!
+      const specExamples = (isRequestRef ? getRequestBodyRefObject(specObj, isRequestRef) : specRef.requestBody)
+        .content['application/json'];
       specExamples.examples = specExamples.examples || {};
       specExamples.examples[fc.exampleName] = specExamples.examples[fc.exampleName] || {};
-      specExamples.examples[fc.exampleName].value = JSON.parse(fc.config.body);
+      specExamples.examples[fc.exampleName].value = fc.resolvedRequestBody;
     }
   });
 
   return params;
+}
+
+// Resolve "#/components/requestBodies/BodyRequest" into the object
+function getRequestBodyRefObject(specObj, strRef) {
+  if (!strRef.startsWith('#')) {
+    throw new Error('$ref does not begin with "#"');
+  }
+  const parts = strRef.split('/').slice(1); // ignore the first "#/"
+  let ref = specObj;
+
+  while (parts.length) {
+    const path = parts.shift();
+    ref = ref[path];
+  }
+  return ref;
 }
 
 module.exports = { lintCommand, lintSpec, sortPaths, sortComponents, syncExamples };

@@ -16,6 +16,7 @@
 - [Linting](#linting)
 - [Building](#building)
 - [Comparing](#comparing)
+- [Validating](#validating)
 - Deploying (Coming soon)
 - [Config file](#config-file)
 
@@ -32,11 +33,12 @@ oaat --help
 
 ## Usage
 
-This tool does 4 things:
+This tool does 5 things:
 - `oaat record` records API responses to requests specified in `x-examples` fields in an OpenAPI 3.x spec file.
 - `oaat lint` lints an OpenAPI 3.x spec file (basic formatting; tools like [speccy](https://www.npmjs.com/package/speccy) provide more capability, but don't do formatting).
-- `oaat compare` compares the earlier-recorded responses to the last responses for endpoints in an OpenAPI 3.x spec file.
 - `oaat build` creates an OpenAPI 3.x spec file with [API Gateway][api-gateway-url] headers, optionally with mock responses for the APIs.
+- `oaat compare` compares the earlier-recorded responses to the last responses for endpoints in an OpenAPI 3.x spec file.
+- `oaat validate` validates that a spec-file is compliant with the OpenAPI 3.x specification.
 - (Coming soon) `oaat deploy` deploys an OpenAPI 3.x spec file that has the API Gateway headers to API Gateway.
 
 ## Recording
@@ -54,12 +56,13 @@ Usage: oaat record [options] <jsonFile> [serverUrl]
 Record the responses of API spec file endpoint requests (optionally use a different server to make requests)
 
 Options:
-  -o, --output <file>  Output file (if different to jsonFile)
-  -c, --config <file>  Config file to override default config
-  -q, --quiet          No logging
-  -v, --verbose        Verbose logging
-  -d, --dry-run        Dry run (no changes made)
-  -h, --help           display help for command
+  -o, --output <file>          Output file (if different to jsonFile)
+  -c, --config <file>          Config file to override default config
+  -s, --sec-tokens <key=val,>  Pass security token(s) matching the "key" in spec.securitySchemes, with a "value"
+  -q, --quiet                  No logging
+  -v, --verbose                Verbose logging
+  -d, --dry-run                Dry run (no changes made)
+  -h, --help                   display help for command
 ```
 
 To get valid example responses - to use for mocking & as documentation - we need to add some custom
@@ -190,6 +193,15 @@ The above JavaScript module exports an async function which returns an object as
 The `queueWrapper()` function is there to combine multiple requests into a single request, in scenarios where
 multiple endpoint-examples require the same async-value. 
 
+### Security tokens and headers
+
+APIs are often protected with security tokens and headers. To call these APIs, the security token can 
+be passed to the command line via `-s securityHeaderType=123someValue,nextToken=nextValue,...`. Alternatively,
+the security token values can be specified in the `securitySchemes` section of [configuration file](config-file).
+By default, `securitySchemes` contains no keys.
+
+`oaat` will **always** pick the first security scheme when there are multiple security schemes available for an endpoint.
+
 ### Disabling endpoint recording
 
 Sometimes it may be necessary to disable the recording of certain endpoints, while keeping the endpoint in the spec.
@@ -249,17 +261,20 @@ There are lots of good tools that can check the syntax and style of Open API Sep
 
 ```shell script
 $ oaat lint --help
-Usage: oaat lint [options] <jsonFile>
+Usage: oaat lint [options] <jsonFile> [serverUrl]
 
 Tidy the API Spec up a bit
 
 Options:
-  -o, --output <file>  Output file (if different to jsonFile)
-  -c, --config <file>  Config file to override default config
-  -q, --quiet          no logging
-  -v, --verbose        verbose logging
-  -h, --help           display help for command
+  -o, --output <file>          Output file (if different to jsonFile)
+  -c, --config <file>          Config file to override default config
+  -s, --sec-tokens <key=val,>  Pass security token(s) matching the "key" in spec.securitySchemes, with a "value"
+  -q, --quiet                  no logging
+  -v, --verbose                verbose logging
+  -h, --help                   display help for command
 ```
+
+Note: `serverUrl` and `sec-tokens` are only required when the `config.lint.syncExamples` is `true`.
 
 See the [configuration file](config-file) for further options.
 
@@ -270,7 +285,7 @@ Creates an OpenAPI 3.x spec file with [API Gateway][api-gateway-url] headers, op
 ### Command
 
 ```shell script
-$ oaat lint --help
+$ oaat build --help
 Usage: oaat build [options] <jsonFile> <outputJsonFile> [serverUrl]
 
 Adds custom headers & Swagger UI endpoint to allow deployment of spec file to AWS API Gateway with documentation
@@ -339,7 +354,6 @@ by specifying multiple API paths as property keys (see example below).
 }
 ```
 
-
 ## Comparing
 
 Compares the earlier-recorded responses to the last responses for endpoints in an OpenAPI 3.x spec file.
@@ -349,17 +363,35 @@ snapshots, and comparing those to the latest responses.
 ### Command
 
 ```shell script
-$ oaat lint --help
-Usage: oaat compare [options] <jsonFile> <outputJsonFile> [serverUrl]
+Usage: oaat compare [options] <jsonFile> [serverUrl]
 
-Adds custom headers & Swagger UI endpoint to allow deployment of spec file to AWS API Gateway with documentation
+Compares recorded responses (referenced by the spec file) to the latest responses
 
 Options:
-  -c, --config <file>        Config file to override default config
-  -m, --compare-mode <mode>  Compares by "value" (default), "type", "schema"
-  -q, --quiet                No logging
-  -v, --verbose              Verbose logging
-  -h, --help                 display help for command
+  -c, --config <file>          Config file to override default config
+  -s, --sec-tokens <key=val,>  Pass security token(s) matching the "key" in spec.securitySchemes, with a "value"
+  -m --compare-mode <mode>     Comparison mode: "value" (default), "type", "schema"
+  -q, --quiet                  no logging
+  -v, --verbose                verbose logging
+  -h, --help                   display help for command
+```
+
+## Validating
+
+This command validates the JSON spec file against the Open API 3.x schema.
+Any errors are listed in the output.  
+
+### Command
+
+```shell script
+$ oaat validate --help
+Usage: oaat validate [options] <jsonFile>
+
+Validate the API spec file against the OAS 3.x schema
+
+Options:
+  -h, --help  display help for command
+
 ```
 
 ## Config file
@@ -426,6 +458,8 @@ module.exports = {
     sortComponentsAlphabetically: true,
 
     // Updates the parameter and requestBody examples using the x-examples from the 200 response
+    // Requires a API server to be in the spec or specified in the command line if any paramaters come from scripts
+    // Requires config.securitySchemes (or `sec-tokens` on the command line) to be specified if any APIs specify the "security" property.
     syncExamples: true
   },
 
@@ -447,6 +481,11 @@ module.exports = {
     // A URI (URL or data:image/x-icon;base64 encode image) for the favicon
     webFaviconHref: 'url or data:image/x-icon;base64',
   },
+  // If you wish to record your security tokens here, you may.
+  securitySchemes: {
+   schemeName1: { value: 'static value' },
+   schemeName2: { script: 'path/to/script.js' }
+  }
 };
 ```
 

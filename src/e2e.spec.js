@@ -14,10 +14,11 @@ describe('CLI', () => {
           -h, --help                                               display help for command
 
         Commands:
-          lint [options] <jsonFile>                                Tidy the API Spec up a bit
+          lint [options] <jsonFile> [serverUrl]                    Tidy the API Spec up a bit
           record [options] <jsonFile> [serverUrl]                  Record the responses of API spec file endpoint requests (optionally use a different server to make requests)
           build [options] <jsonFile> <outputJsonFile> [serverUrl]  Adds custom headers & Swagger UI endpoint to allow deployment of spec file to AWS API Gateway with documentation
           compare [options] <jsonFile> [serverUrl]                 Compares recorded responses (referenced by the spec file) to the latest responses
+          validate <jsonFile>                                      Validate the API spec file against the OAS 3.x schema
           help [command]                                           display help for command
         "
       `);
@@ -33,10 +34,11 @@ describe('CLI', () => {
           -h, --help                                               display help for command
 
         Commands:
-          lint [options] <jsonFile>                                Tidy the API Spec up a bit
+          lint [options] <jsonFile> [serverUrl]                    Tidy the API Spec up a bit
           record [options] <jsonFile> [serverUrl]                  Record the responses of API spec file endpoint requests (optionally use a different server to make requests)
           build [options] <jsonFile> <outputJsonFile> [serverUrl]  Adds custom headers & Swagger UI endpoint to allow deployment of spec file to AWS API Gateway with documentation
           compare [options] <jsonFile> [serverUrl]                 Compares recorded responses (referenced by the spec file) to the latest responses
+          validate <jsonFile>                                      Validate the API spec file against the OAS 3.x schema
           help [command]                                           display help for command
         "
       `);
@@ -364,6 +366,28 @@ describe('CLI', () => {
         expect(result).toContain('Expected an integer. Received');
         expect(result).toContain('Expected a string. Received');
       });
+    });
+  });
+
+  describe('validate', () => {
+    it('should not display an error when the spec contains valid examples', async () => {
+      const result = await runCommand(`validate ./fixtures/specWithValidExamples.json`);
+
+      expect(result).toMatchInlineSnapshot(`
+        "[34minfo[39m: Validation complete.
+        "
+      `);
+    });
+
+    it('should display an error when the spec is not valid', async () => {
+      const result = await runCommand(`validate ./fixtures/invalidSpecV2.json`);
+
+      expect(result).toMatchInlineSnapshot(`
+        "[31merror[39m: One or more errors exist in the OpenApi definition
+          Property not allowed: swagger
+          Missing required property: openapi
+        "
+      `);
     });
   });
 });

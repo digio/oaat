@@ -49,7 +49,7 @@
     "lodash": "4.17.20",
     "mkdirp": "1.0.4",
     "node-fetch": "2.6.1",
-    "openapi-enforcer": "1.10.7",
+    "openapi-enforcer": "1.10.8",
     "p-pipe": "3.1.0",
     "upath": "1.2.0",
     "winston": "3.2.1"

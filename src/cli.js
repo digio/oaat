@@ -6,22 +6,30 @@ const { getLogAndConfig } = require('./utils');
 
 program.name('oaat').version(version).usage('<command>');
 
+// NOTE: Any commands which require resolved-parameter values WILL need
+// an optional serverUrl and optional sec-tokens, if scripts or security is
+// used by the API.
+
 program
-  .command('lint <jsonFile>')
+  .command('lint <jsonFile> [serverUrl]')
   .description('Tidy the API Spec up a bit')
   .option('-o, --output <file>', 'Output file (if different to jsonFile)')
   .option('-c, --config <file>', 'Config file to override default config')
+  .option(
+    '-s, --sec-tokens <key=val,>',
+    'Pass security token(s) matching the "key" in spec.securitySchemes, with a "value"',
+  )
   .option('-q, --quiet', 'no logging')
   .option('-v, --verbose', 'verbose logging')
   // eslint-disable-next-line @getify/proper-arrows/where
-  .action(async (jsonFile, cmd) => {
+  .action(async (jsonFile, serverUrl, cmd) => {
     const { log, config } = getLogAndConfig('lint', cmd);
 
     const { lintCommand } = require('./lint');
     try {
-      await lintCommand(jsonFile, config);
+      await lintCommand(jsonFile, serverUrl, config);
     } catch (err) {
-      log.error(err);
+      handleErrors(log, config, err);
     }
   });
 
@@ -32,6 +40,10 @@ program
   )
   .option('-o, --output <file>', 'Output file (if different to jsonFile)')
   .option('-c, --config <file>', 'Config file to override default config')
+  .option(
+    '-s, --sec-tokens <key=val,>',
+    'Pass security token(s) matching the "key" in spec.securitySchemes, with a "value"',
+  )
   .option('-q, --quiet', 'No logging')
   .option('-v, --verbose', 'Verbose logging')
   .option('-d, --dry-run', 'Dry run (no changes made)')
@@ -44,8 +56,7 @@ program
     try {
       await recordCommand(jsonFile, serverUrl, config);
     } catch (err) {
-      // console.error(err);
-      log.error(err);
+      handleErrors(log, config, err);
     }
   });
 
@@ -75,7 +86,7 @@ program
     try {
       await addGatewayInfo(jsonFile, serverUrl, config);
     } catch (err) {
-      log.error(err);
+      handleErrors(log, config, err);
     }
   });
 
@@ -83,6 +94,10 @@ program
   .command('compare <jsonFile> [serverUrl]')
   .description('Compares recorded responses (referenced by the spec file) to the latest responses')
   .option('-c, --config <file>', 'Config file to override default config')
+  .option(
+    '-s, --sec-tokens <key=val,>',
+    'Pass security token(s) matching the "key" in spec.securitySchemes, with a "value"',
+  )
   .option('-m --compare-mode <mode>', 'Comparison mode: "value" (default), "type", "schema"')
   .option('-q, --quiet', 'no logging')
   .option('-v, --verbose', 'verbose logging')
@@ -100,7 +115,22 @@ program
       // eslint-disable-next-line no-process-exit
       return process.exit(errorCode);
     } catch (err) {
-      log.error(err);
+      handleErrors(log, config, err);
+    }
+  });
+
+program
+  .command('validate <jsonFile>')
+  .description('Validate the API spec file against the OAS 3.x schema')
+  // eslint-disable-next-line @getify/proper-arrows/where
+  .action(async (jsonFile, cmd) => {
+    const { log, config } = getLogAndConfig('validate', cmd);
+
+    const { validateCommand } = require('./validate');
+    try {
+      await validateCommand(jsonFile, config);
+    } catch (err) {
+      handleErrors(log, config, err);
     }
   });
 
@@ -108,4 +138,11 @@ program.parse(process.argv);
 
 if (!process.argv.slice(2).length) {
   program.help();
+}
+
+function handleErrors(log, config, err) {
+  log.error(err);
+  if (config.verbose) {
+    console.error(err);
+  }
 }

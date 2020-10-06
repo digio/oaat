@@ -1,5 +1,8 @@
 {
   "swagger": "2.0",
+  "servers": [{
+    "url": "foo"
+  }],
   "info": {
     "description": "VFE API",
     "version": "1.0.0",
