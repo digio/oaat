@@ -1,6 +1,6 @@
 {
   "name": "oaat",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "description": "Open API AWS Tool with support for deploying an API to AWS API Gateway",
   "repository": {
     "type": "git",

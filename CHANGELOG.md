@@ -1,3 +1,10 @@
+# [1.3.0](https://github.com/digio/oaat/compare/v1.2.0...v1.3.0) (2020-10-06)
+
+
+### Features
+
+* **security:** add support for OAS securitySchemes (http & apiKey) ([a5459bf](https://github.com/digio/oaat/commit/a5459bf02eaccf1d1789b522c3fa1deac3457248))
+
 # [1.2.0](https://github.com/digio/oaat/compare/v1.1.1...v1.2.0) (2020-09-16)
 
 
