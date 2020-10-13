@@ -30,14 +30,14 @@ describe('record', () => {
   describe('validateResponses()', () => {
     it('should discard responses where the expected status code does not match the actual status code', () => {
       const responses = [
-        { url: '/1', statusCode: 200, expectedStatusCode: 200 },
-        { url: '/2', statusCode: 400, expectedStatusCode: 400 },
-        { url: '/3', statusCode: 200, expectedStatusCode: 400 },
+        { url: '/1', statusCode: 200, expectedStatusCode: 200, config: { method: 'get' } },
+        { url: '/2', statusCode: 400, expectedStatusCode: 400, config: { method: 'post' } },
+        { url: '/3', statusCode: 200, expectedStatusCode: 400, config: { method: 'post' } },
       ];
 
       expect(validateResponses({ responses }).responses).toEqual([
-        { url: '/1', statusCode: 200, expectedStatusCode: 200 },
-        { url: '/2', statusCode: 400, expectedStatusCode: 400 },
+        { url: '/1', statusCode: 200, expectedStatusCode: 200, config: { method: 'get' } },
+        { url: '/2', statusCode: 400, expectedStatusCode: 400, config: { method: 'post' } },
       ]);
     });
   });

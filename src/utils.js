@@ -5,6 +5,7 @@ const logger = require('winston');
 const mkdirp = require('mkdirp');
 const pipe = require('p-pipe');
 const Enforcer = require('openapi-enforcer');
+const { getShortEndpointName } = require('./utils/endpoints');
 
 const EXAMPLE_PROP_NAME = 'x-examples';
 const IGNORE_PROPERTY_PROP_NAME = 'x-test-ignore-paths';
@@ -26,7 +27,7 @@ function getFetchConfigForAPIEndpoints(params) {
   };
 }
 
-function concurrentFunctionProcessor(fnArray, maxConcurrent = 15) {
+function concurrentFunctionProcessor(fnArray, maxConcurrent = 15, remainingItemsMsg = '') {
   return new Promise((resolve) => {
     // https://nodesource.com/blog/understanding-streams-in-nodejs/
     // Create a stream from an array of functions, then execute those functions
@@ -44,7 +45,12 @@ function concurrentFunctionProcessor(fnArray, maxConcurrent = 15) {
       counter++;
       inFlight++;
       promises.push(
+        // Pass the counter and total to the task-function
         Promise.resolve(data(counter, total)).finally(() => {
+          if (remainingItemsMsg && inFlight < maxConcurrent) {
+            logger.info(`${remainingItemsMsg} ${inFlight}`);
+          }
+
           inFlight--;
           logger.debug(`Promise resolved, ${inFlight}, ${readableStream.readableLength}`);
           readableStream.resume();
@@ -142,12 +148,12 @@ function buildFetchConfigWithoutParameters(path, method, statusCode, exampleName
   }
 
   if (hasParams && !examples[exampleName].parameters) {
-    logger.warn(`Ignore (no ${EXAMPLE_PROP_NAME} parameters) - ${statusCode} ${method} ${path}`);
+    logger.warn(`Ignore (no ${EXAMPLE_PROP_NAME} parameters) - ${getShortEndpointName(method, path)} ${statusCode}`);
     return null;
   }
 
   if (hasRequestBody && !examples[exampleName].requestBody) {
-    logger.warn(`Ignore (no ${EXAMPLE_PROP_NAME} requestBody) - ${statusCode} ${method} ${path}`);
+    logger.warn(`Ignore (no ${EXAMPLE_PROP_NAME} requestBody) - ${getShortEndpointName(method, path)} ${statusCode}`);
     return null;
   }
 

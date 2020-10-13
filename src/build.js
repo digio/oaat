@@ -14,6 +14,7 @@ const {
 } = require('./utils');
 const cloneDeep = require('lodash/cloneDeep');
 const { readFileSync } = require('fs');
+const { getShortEndpointName } = require('./utils/endpoints');
 
 const AMAZON_INTEGRATION_PROP = 'x-amazon-apigateway-integration';
 const WEB_PAGE_SPEC_FILE_TOKEN = '"$$_specFileUrl_$$"';
@@ -145,7 +146,7 @@ function mockEndpointMethodStatus(mockMethodParams) {
 
   // If the response should be ignored, ignore it.
   if (data.responses[statusCode][IGNORE_ENDPOINT_NAME]) {
-    logger.info(`Ignoring ${method.toUpperCase()} ${path}`);
+    logger.info(`Ignoring '${getShortEndpointName(method, path)}' ${statusCode}`);
     return [];
   }
   const endpointName = statusCode === '200' ? path : `${path}/${statusCode}`;
@@ -158,7 +159,7 @@ function mockEndpointMethodStatus(mockMethodParams) {
 
   // If it is a string, great
   if (typeof mockFileObj === 'string') {
-    logger.info(`Mocking '${method.toUpperCase()} ${endpointName}' with '${mockFileObj}'`);
+    logger.info(`Mocking '${getShortEndpointName(method, endpointName)}' with '${mockFileObj}'`);
     configs.push({
       pathName: endpointName,
       responseData: readResponseFile(destPath, mockFileObj),
@@ -174,7 +175,7 @@ function mockEndpointMethodStatus(mockMethodParams) {
     // This approach only makes sense for path-parameters. Anything else - body, query or header params - won't work.
 
     configs = mockFiles.map(([pathName, responseFilePath]) => {
-      logger.info(`Mocking '${method.toUpperCase()} ${pathName}' with ${responseFilePath}`);
+      logger.info(`Mocking '${getShortEndpointName(method, pathName)}' with ${responseFilePath}`);
       return {
         pathName,
         responseData: readResponseFile(destPath, responseFilePath),
@@ -183,7 +184,7 @@ function mockEndpointMethodStatus(mockMethodParams) {
     });
 
     // Also add the default config as an endpoint
-    logger.info(`Mocking '${method.toUpperCase()} ${endpointName}' with ${mockFiles[0][1]}`);
+    logger.info(`Mocking '${getShortEndpointName(method, endpointName)}' with ${mockFiles[0][1]}`);
     configs.push({ pathName: endpointName, responseData: mockFiles[0][1], parameters: data.parameters });
   }
 

@@ -3,6 +3,7 @@ const isEqual = require('lodash/isEqual'); // I'm not a fan of Lodash, but this 
 const omit = require('lodash/omit'); // I'm not a fan of Lodash, but this will save a lot of time compared to re-implementing omit()
 const { fetchResponses } = require('./record');
 const logger = require('winston');
+const { getShortEndpointName } = require('./utils/endpoints');
 
 const {
   pipe,
@@ -159,7 +160,11 @@ function compareToSchema({ openapi, objB, res, showDiff }) {
 
   if (!isValid && showDiff) {
     logger.verbose('response', objB);
-    logger.error(`Invalid response for ${res.config.method} ${res.url} (${res.exampleName})`);
+    logger.error(
+      `Invalid response for ${getShortEndpointName(res.config.method, res.url)} ${res.expectedStatusCode} (${
+        res.exampleName
+      })`,
+    );
     logger.error(opError.toString());
   }
 

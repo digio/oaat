@@ -18,6 +18,7 @@ const {
 } = require('./utils');
 const { lintSpec } = require('./lint');
 const { compareResponseData } = require('./compare');
+const { getShortEndpointName, getFullEndpointName } = require('./utils/endpoints');
 
 async function recordCommand(specFile, server, config) {
   // Read the spec file outside of the pipeline, so that we can inject it (and re-write it)
@@ -56,6 +57,7 @@ async function fetchResponses(params) {
   const responses = await concurrentFunctionProcessor(
     fetchConfigs.map((item) => (counter, total) => endpointRequestFn({ ...item, serverUrl, counter, total })),
     maxSimultaneousRequests,
+    'Remaining requests:',
   );
 
   return { ...params, responses };
@@ -76,7 +78,7 @@ function callEndpoint(params) {
     fetcher = fetch,
   } = params;
   const endPointUrl = `${serverUrl}${url}`;
-  logger.info(`Fetching ${counter} of ${total}: ${endPointUrl} ${config.method}`);
+  logger.info(`Fetching ${counter} of ${total}: ${getFullEndpointName(config.method, url, serverUrl)}`);
 
   return fetcher(endPointUrl, config)
     .then(async (res) => {
@@ -108,7 +110,11 @@ function validateResponses(params) {
   // Check that the response status-codes match what we were expecting
   const validResponses = responses.filter((res) => {
     if (res.expectedStatusCode !== res.statusCode) {
-      logger.warn(`${res.url} returned ${res.statusCode}, expected ${res.expectedStatusCode}`);
+      logger.warn(
+        `${getShortEndpointName(res.config.method, res.url)} returned ${res.statusCode}, expected ${
+          res.expectedStatusCode
+        }`,
+      );
       return false;
     }
     return true;
