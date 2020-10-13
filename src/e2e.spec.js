@@ -111,28 +111,28 @@ describe('CLI', () => {
     it('should update the response files using the default config, using noExamples.json', async () => {
       const result = await runCommand(`record ./fixtures/noExamples.json -d`);
       expect(result).toMatchInlineSnapshot(`
-        "[33mwarn[39m: Ignore (no x-examples parameters) - 200 get /posts
-        [33mwarn[39m: Ignore (no x-examples parameters) - 200 get /posts/{id}
-        [33mwarn[39m: Ignore (no x-examples parameters) - 404 get /posts/{id}
-        [33mwarn[39m: Ignore (no x-examples parameters) - 200 get /posts/{id}/comments
-        [33mwarn[39m: Ignore (no x-examples parameters) - 404 get /posts/{id}/comments
-        [33mwarn[39m: Ignore (no x-examples parameters) - 200 get /comments
-        [33mwarn[39m: Ignore (no x-examples parameters) - 200 get /comments/{id}
-        [33mwarn[39m: Ignore (no x-examples parameters) - 404 get /comments/{id}
-        [33mwarn[39m: Ignore (no x-examples parameters) - 200 get /albums
-        [33mwarn[39m: Ignore (no x-examples parameters) - 200 get /albums/{id}
-        [33mwarn[39m: Ignore (no x-examples parameters) - 404 get /albums/{id}
-        [33mwarn[39m: Ignore (no x-examples parameters) - 200 get /albums/{id}/photos
-        [33mwarn[39m: Ignore (no x-examples parameters) - 404 get /albums/{id}/photos
-        [33mwarn[39m: Ignore (no x-examples parameters) - 200 get /photos
-        [33mwarn[39m: Ignore (no x-examples parameters) - 200 get /photos/{id}
-        [33mwarn[39m: Ignore (no x-examples parameters) - 404 get /photos/{id}
-        [33mwarn[39m: Ignore (no x-examples parameters) - 200 get /todos
-        [33mwarn[39m: Ignore (no x-examples parameters) - 200 get /todos/{id}
-        [33mwarn[39m: Ignore (no x-examples parameters) - 404 get /todos/{id}
-        [33mwarn[39m: Ignore (no x-examples parameters) - 200 get /users
-        [33mwarn[39m: Ignore (no x-examples parameters) - 200 get /users/{id}
-        [33mwarn[39m: Ignore (no x-examples parameters) - 404 get /users/{id}
+        "[33mwarn[39m: Ignore (no x-examples parameters) - GET /posts 200
+        [33mwarn[39m: Ignore (no x-examples parameters) - GET /posts/{id} 200
+        [33mwarn[39m: Ignore (no x-examples parameters) - GET /posts/{id} 404
+        [33mwarn[39m: Ignore (no x-examples parameters) - GET /posts/{id}/comments 200
+        [33mwarn[39m: Ignore (no x-examples parameters) - GET /posts/{id}/comments 404
+        [33mwarn[39m: Ignore (no x-examples parameters) - GET /comments 200
+        [33mwarn[39m: Ignore (no x-examples parameters) - GET /comments/{id} 200
+        [33mwarn[39m: Ignore (no x-examples parameters) - GET /comments/{id} 404
+        [33mwarn[39m: Ignore (no x-examples parameters) - GET /albums 200
+        [33mwarn[39m: Ignore (no x-examples parameters) - GET /albums/{id} 200
+        [33mwarn[39m: Ignore (no x-examples parameters) - GET /albums/{id} 404
+        [33mwarn[39m: Ignore (no x-examples parameters) - GET /albums/{id}/photos 200
+        [33mwarn[39m: Ignore (no x-examples parameters) - GET /albums/{id}/photos 404
+        [33mwarn[39m: Ignore (no x-examples parameters) - GET /photos 200
+        [33mwarn[39m: Ignore (no x-examples parameters) - GET /photos/{id} 200
+        [33mwarn[39m: Ignore (no x-examples parameters) - GET /photos/{id} 404
+        [33mwarn[39m: Ignore (no x-examples parameters) - GET /todos 200
+        [33mwarn[39m: Ignore (no x-examples parameters) - GET /todos/{id} 200
+        [33mwarn[39m: Ignore (no x-examples parameters) - GET /todos/{id} 404
+        [33mwarn[39m: Ignore (no x-examples parameters) - GET /users 200
+        [33mwarn[39m: Ignore (no x-examples parameters) - GET /users/{id} 200
+        [33mwarn[39m: Ignore (no x-examples parameters) - GET /users/{id} 404
         "
       `);
     });
@@ -140,10 +140,14 @@ describe('CLI', () => {
     it('should update the response files using the default config, using threeExamples.json', async () => {
       const result = await runCommand(`record ./fixtures/threeExamples.json -d`);
       expect(result).toMatchInlineSnapshot(`
-        "[34minfo[39m: Fetching 1 of 4: https://jsonplaceholder.typicode.com/posts get
-        [34minfo[39m: Fetching 2 of 4: https://jsonplaceholder.typicode.com/posts/1 get
-        [34minfo[39m: Fetching 3 of 4: https://jsonplaceholder.typicode.com/posts/2 get
-        [34minfo[39m: Fetching 4 of 4: https://jsonplaceholder.typicode.com/posts/wrong-param get
+        "[34minfo[39m: Fetching 1 of 4: GET https://jsonplaceholder.typicode.com/posts
+        [34minfo[39m: Fetching 2 of 4: GET https://jsonplaceholder.typicode.com/posts/1
+        [34minfo[39m: Fetching 3 of 4: GET https://jsonplaceholder.typicode.com/posts/2
+        [34minfo[39m: Fetching 4 of 4: GET https://jsonplaceholder.typicode.com/posts/wrong-param
+        [34minfo[39m: Remaining requests: 4
+        [34minfo[39m: Remaining requests: 3
+        [34minfo[39m: Remaining requests: 2
+        [34minfo[39m: Remaining requests: 1
         [34minfo[39m: Creating response file GET_posts-200_DEFAULT.json
         [34minfo[39m: Creating response file GET_posts_{id}-200_DEFAULT_id_1.json
         [34minfo[39m: Creating response file GET_posts_{id}-200_id_2.json
@@ -266,10 +270,14 @@ describe('CLI', () => {
     it('should indicate there are differences when the status codes are different', async () => {
       const result = await runCommand(`compare ./fixtures/threeExamplesWithWrongStatus.json`);
       expect(result).toMatchInlineSnapshot(`
-        "[34minfo[39m: Fetching 1 of 4: https://jsonplaceholder.typicode.com/posts get
-        [34minfo[39m: Fetching 2 of 4: https://jsonplaceholder.typicode.com/posts/1 get
-        [34minfo[39m: Fetching 3 of 4: https://jsonplaceholder.typicode.com/posts/2 get
-        [34minfo[39m: Fetching 4 of 4: https://jsonplaceholder.typicode.com/posts/wrong-param get
+        "[34minfo[39m: Fetching 1 of 4: GET https://jsonplaceholder.typicode.com/posts
+        [34minfo[39m: Fetching 2 of 4: GET https://jsonplaceholder.typicode.com/posts/1
+        [34minfo[39m: Fetching 3 of 4: GET https://jsonplaceholder.typicode.com/posts/2
+        [34minfo[39m: Fetching 4 of 4: GET https://jsonplaceholder.typicode.com/posts/wrong-param
+        [34minfo[39m: Remaining requests: 4
+        [34minfo[39m: Remaining requests: 3
+        [34minfo[39m: Remaining requests: 2
+        [34minfo[39m: Remaining requests: 1
         [31merror[39m: Expected 400 but received 200: /posts/1
         [31merror[39m: Expected 400 but received 200: /posts/2
         [34minfo[39m: Comparing by VALUE
@@ -293,10 +301,14 @@ describe('CLI', () => {
       it('should indicate there are no differences when there are no differences', async () => {
         const result = await runCommand(`compare ./fixtures/threeExamplesWithCorrectStatus.json`);
         expect(result).toMatchInlineSnapshot(`
-          "[34minfo[39m: Fetching 1 of 4: https://jsonplaceholder.typicode.com/posts get
-          [34minfo[39m: Fetching 2 of 4: https://jsonplaceholder.typicode.com/posts/1 get
-          [34minfo[39m: Fetching 3 of 4: https://jsonplaceholder.typicode.com/posts/2 get
-          [34minfo[39m: Fetching 4 of 4: https://jsonplaceholder.typicode.com/posts/-2 get
+          "[34minfo[39m: Fetching 1 of 4: GET https://jsonplaceholder.typicode.com/posts
+          [34minfo[39m: Fetching 2 of 4: GET https://jsonplaceholder.typicode.com/posts/1
+          [34minfo[39m: Fetching 3 of 4: GET https://jsonplaceholder.typicode.com/posts/2
+          [34minfo[39m: Fetching 4 of 4: GET https://jsonplaceholder.typicode.com/posts/-2
+          [34minfo[39m: Remaining requests: 4
+          [34minfo[39m: Remaining requests: 3
+          [34minfo[39m: Remaining requests: 2
+          [34minfo[39m: Remaining requests: 1
           [34minfo[39m: Comparing by VALUE
           [32msuccess[39m: ✅ No differences detected
           "
@@ -306,10 +318,14 @@ describe('CLI', () => {
       it('should indicate there are differences when the response body is different and the comparison is by-value', async () => {
         const result = await runCommand(`compare ./fixtures/threeExamplesWithDiffBody.json`);
         expect(result).toMatchInlineSnapshot(`
-          "[34minfo[39m: Fetching 1 of 4: https://jsonplaceholder.typicode.com/posts get
-          [34minfo[39m: Fetching 2 of 4: https://jsonplaceholder.typicode.com/posts/1 get
-          [34minfo[39m: Fetching 3 of 4: https://jsonplaceholder.typicode.com/posts/2 get
-          [34minfo[39m: Fetching 4 of 4: https://jsonplaceholder.typicode.com/posts/wrong-param get
+          "[34minfo[39m: Fetching 1 of 4: GET https://jsonplaceholder.typicode.com/posts
+          [34minfo[39m: Fetching 2 of 4: GET https://jsonplaceholder.typicode.com/posts/1
+          [34minfo[39m: Fetching 3 of 4: GET https://jsonplaceholder.typicode.com/posts/2
+          [34minfo[39m: Fetching 4 of 4: GET https://jsonplaceholder.typicode.com/posts/wrong-param
+          [34minfo[39m: Remaining requests: 4
+          [34minfo[39m: Remaining requests: 3
+          [34minfo[39m: Remaining requests: 2
+          [34minfo[39m: Remaining requests: 1
           [34minfo[39m: Comparing by VALUE
           [31merror[39m: /posts/2
           - Expected
@@ -336,10 +352,14 @@ describe('CLI', () => {
       it('should indicate there are no differences when the body values differ but have the same type', async () => {
         const result = await runCommand(`compare ./fixtures/threeExamplesWithDiffBody.json -m type`);
         expect(result).toMatchInlineSnapshot(`
-          "[34minfo[39m: Fetching 1 of 4: https://jsonplaceholder.typicode.com/posts get
-          [34minfo[39m: Fetching 2 of 4: https://jsonplaceholder.typicode.com/posts/1 get
-          [34minfo[39m: Fetching 3 of 4: https://jsonplaceholder.typicode.com/posts/2 get
-          [34minfo[39m: Fetching 4 of 4: https://jsonplaceholder.typicode.com/posts/wrong-param get
+          "[34minfo[39m: Fetching 1 of 4: GET https://jsonplaceholder.typicode.com/posts
+          [34minfo[39m: Fetching 2 of 4: GET https://jsonplaceholder.typicode.com/posts/1
+          [34minfo[39m: Fetching 3 of 4: GET https://jsonplaceholder.typicode.com/posts/2
+          [34minfo[39m: Fetching 4 of 4: GET https://jsonplaceholder.typicode.com/posts/wrong-param
+          [34minfo[39m: Remaining requests: 4
+          [34minfo[39m: Remaining requests: 3
+          [34minfo[39m: Remaining requests: 2
+          [34minfo[39m: Remaining requests: 1
           [34minfo[39m: Comparing by TYPE
           [32msuccess[39m: ✅ No differences detected
           "
@@ -351,10 +371,14 @@ describe('CLI', () => {
       it('should indicate there are no differences when the schema matches', async () => {
         const result = await runCommand(`compare ./fixtures/threeExamplesWithCorrectStatus.json -m schema`);
         expect(result).toMatchInlineSnapshot(`
-          "[34minfo[39m: Fetching 1 of 4: https://jsonplaceholder.typicode.com/posts get
-          [34minfo[39m: Fetching 2 of 4: https://jsonplaceholder.typicode.com/posts/1 get
-          [34minfo[39m: Fetching 3 of 4: https://jsonplaceholder.typicode.com/posts/2 get
-          [34minfo[39m: Fetching 4 of 4: https://jsonplaceholder.typicode.com/posts/-2 get
+          "[34minfo[39m: Fetching 1 of 4: GET https://jsonplaceholder.typicode.com/posts
+          [34minfo[39m: Fetching 2 of 4: GET https://jsonplaceholder.typicode.com/posts/1
+          [34minfo[39m: Fetching 3 of 4: GET https://jsonplaceholder.typicode.com/posts/2
+          [34minfo[39m: Fetching 4 of 4: GET https://jsonplaceholder.typicode.com/posts/-2
+          [34minfo[39m: Remaining requests: 4
+          [34minfo[39m: Remaining requests: 3
+          [34minfo[39m: Remaining requests: 2
+          [34minfo[39m: Remaining requests: 1
           [34minfo[39m: Comparing by SCHEMA
           [32msuccess[39m: ✅ No differences detected
           "
