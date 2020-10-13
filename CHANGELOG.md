@@ -1,3 +1,10 @@
+# [1.4.0](https://github.com/digio/oaat/compare/v1.3.0...v1.4.0) (2020-10-13)
+
+
+### Features
+
+* **logging:** standardise endpoint logging ([bb8c4db](https://github.com/digio/oaat/commit/bb8c4dbc1d42cbdf7712229f553ecdd0b01a3bd3))
+
 # [1.3.0](https://github.com/digio/oaat/compare/v1.2.0...v1.3.0) (2020-10-06)
 
 
