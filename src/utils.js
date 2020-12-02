@@ -28,7 +28,7 @@ function getFetchConfigForAPIEndpoints(params) {
 }
 
 function concurrentFunctionProcessor(fnArray, maxConcurrent = 15, remainingItemsMsg = '') {
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     // https://nodesource.com/blog/understanding-streams-in-nodejs/
     // Create a stream from an array of functions, then execute those functions
     // until we reach the maxConcurrent limit. When a function has resolved,
@@ -66,7 +66,7 @@ function concurrentFunctionProcessor(fnArray, maxConcurrent = 15, remainingItems
     readableStream.on('end', () => {
       logger.debug('concurrentFunctionProcessor stream END');
       // Return the resolved promises
-      Promise.all(promises).then((results) => resolve(results));
+      Promise.all(promises).then(resolve).catch(reject);
     });
   });
 }
@@ -237,19 +237,26 @@ async function resolveFetchConfigParams(params) {
   await Promise.all(
     (fconfig.apiEndpoint.parameters || []).map(async (param, index) => {
       const paramType = param.in;
-      const pathParam = param.name;
-      const paramValue = await getParamValue(
-        serverUrl,
-        fconfig.apiEndpoint.responses[fconfig.expectedStatusCode][EXAMPLE_PROP_NAME][fconfig.exampleName].parameters[
-          index
-        ],
-        absSpecFilePath,
-      );
-      fconfig = paramTypeMapping[paramType](fconfig, paramValue, pathParam);
+      const paramName = param.name;
 
-      // Add the parameter value to the fconfig.resolvedParams array
-      fconfig.resolvedParams = fconfig.resolvedParams || [];
-      fconfig.resolvedParams[index] = paramValue;
+      try {
+        const paramValue = await getParamValue(
+          serverUrl,
+          fconfig.apiEndpoint.responses[fconfig.expectedStatusCode][EXAMPLE_PROP_NAME][fconfig.exampleName].parameters[
+            index
+          ],
+          absSpecFilePath,
+        );
+        fconfig = paramTypeMapping[paramType](fconfig, paramValue, paramName);
+
+        // Add the parameter value to the fconfig.resolvedParams array
+        fconfig.resolvedParams = fconfig.resolvedParams || [];
+        fconfig.resolvedParams[index] = paramValue;
+      } catch (err) {
+        throw new Error(
+          `An ${EXAMPLE_PROP_NAME} parameter for "${paramName}" is missing from ${fconfig.path}.responses.${fconfig.expectedStatusCode}.${EXAMPLE_PROP_NAME}.${fconfig.exampleName}.parameters[${index}]`,
+        );
+      }
     }),
   );
 
@@ -268,6 +275,9 @@ async function resolveFetchConfigParams(params) {
 }
 
 function getParamValue(serverUrl, inputObj, absSpecFilePath) {
+  if (!inputObj) {
+    throw new Error(`Missing parameter object!`);
+  }
   if (inputObj.script !== undefined) {
     // TODO: The script MUST be relative to the spec file!
     const fn = require(join(absSpecFilePath, inputObj.script));
@@ -339,10 +349,12 @@ async function updateConfigWithSecurityScheme(secParams) {
       const schemaConfig = securitySchemes[schemeName];
       logger.debug(`Resolving ${schemeName} in securitySchemes, ${JSON.stringify(securityKeyValues)}`);
 
-      // TODO: try..catch to return a more helpful error
-      const securityValue = await getParamValue(serverUrl, securityKeyValues[schemeName], absSpecFilePath);
-
-      fetchConfig = securityTypeMapping[schemaConfig.type](schemaConfig, securityValue, fetchConfig);
+      try {
+        const securityValue = await getParamValue(serverUrl, securityKeyValues[schemeName], absSpecFilePath);
+        fetchConfig = securityTypeMapping[schemaConfig.type](schemaConfig, securityValue, fetchConfig);
+      } catch (err) {
+        throw new Error(`The security scheme "${schemeName}" is missing from the list of securitySchemes`);
+      }
     }),
   );
 

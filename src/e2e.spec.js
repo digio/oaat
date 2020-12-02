@@ -166,6 +166,17 @@ describe('CLI', () => {
         "
       `);
     });
+
+    it('should display an error when the parameters do not match, and exit with a non-zero error code', async () => {
+      const result = await runCommand(`record ./fixtures/parameterMismatch.json`);
+
+      expect(result).toMatchInlineSnapshot(`
+        "[33mwarn[39m: Ignore (no x-examples parameters) - GET /posts/{id} 200
+        [33mwarn[39m: Ignore (no x-examples parameters) - GET /posts/{id} 404
+        [31merror[39m: An x-examples parameter for \\"userId\\" is missing from /posts.responses.200.x-examples.default.parameters[1]
+        "
+      `);
+    });
   });
 
   describe('build should create a spec file that is OpenAPI 3.x compliant', () => {

@@ -172,7 +172,7 @@ function writeResponses(params) {
 }
 
 /**
- * Compare responses to the existing responses, and return a list of files
+ * Compare response to the existing response, and return the response
  * the should be updated.
  * @param params
  */
