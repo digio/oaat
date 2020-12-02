@@ -176,7 +176,7 @@ function compareToSchema({ openapi, objB, res, showDiff }) {
  * We do not show diffs between the old and new response in this mode.
  * @param oldRes
  * @param apiRes
- * @return {string}
+ * @return {string} exact, inexact, type, nomatch
  */
 function compareResponseData(oldRes, apiRes) {
   const showDiff = false;

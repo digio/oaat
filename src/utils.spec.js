@@ -1238,6 +1238,59 @@ describe('utils', () => {
           },
         ]);
       });
+
+      it('should throw an error when the target security scheme does not exist', async () => {
+        const input = [
+          {
+            path: '/api',
+            query: {},
+            url: '/api',
+            config: { method: 'get' },
+            apiEndpoint: {
+              security: [{ scheme1: [], scheme2: [] }],
+              responses: {
+                200: {
+                  description: 'Successful Operation',
+                },
+              },
+            },
+            expectedStatusCode: 200,
+            existingResponseFile: undefined,
+            ignorePathsList: [],
+            exampleName: 'default',
+            exampleIndex: 0,
+          },
+        ];
+        // The securitySchemes key contains the user-specified security values
+        const config = {
+          simultaneousRequests: 15,
+          securitySchemes: { doesNotExist: { value: 'abc123' } },
+        };
+        const specObj = {
+          components: {
+            securitySchemes: {
+              scheme1: {
+                type: 'http',
+                scheme: 'bearer',
+              },
+              scheme2: {
+                type: 'apiKey',
+                in: 'header',
+                name: 'x-api-key',
+              },
+            },
+          },
+        };
+
+        await expect(
+          addParamsToFetchConfig({
+            fetchConfigs: input,
+            serverUrl: 'https://example.com/',
+            config,
+            specObj,
+          }),
+        ).rejects.toThrow('The security scheme "scheme1" is missing from the list of securitySchemes');
+      });
     });
   });
 
