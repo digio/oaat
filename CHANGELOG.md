@@ -1,3 +1,10 @@
+## [1.4.1](https://github.com/digio/oaat/compare/v1.4.0...v1.4.1) (2020-12-02)
+
+
+### Bug Fixes
+
+* improve error messages for missing parameters ([36a1671](https://github.com/digio/oaat/commit/36a1671c9226ac71c1c377d93acca1673523dc34)), closes [#2](https://github.com/digio/oaat/issues/2)
+
 # [1.4.0](https://github.com/digio/oaat/compare/v1.3.0...v1.4.0) (2020-10-13)
 
 
