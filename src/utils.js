@@ -11,6 +11,7 @@ const EXAMPLE_PROP_NAME = 'x-examples';
 const IGNORE_PROPERTY_PROP_NAME = 'x-test-ignore-paths';
 const IGNORE_ENDPOINT_NAME = 'x-ignore';
 const MOCK_FILE_PROP = 'x-mock-file';
+const MISSING_PARAM_ERROR_MESSAGE = 'Missing parameter object!';
 
 // Returns fetch config for calling all the endpoints
 function getFetchConfigForAPIEndpoints(params) {
@@ -253,9 +254,13 @@ async function resolveFetchConfigParams(params) {
         fconfig.resolvedParams = fconfig.resolvedParams || [];
         fconfig.resolvedParams[index] = paramValue;
       } catch (err) {
-        throw new Error(
-          `An ${EXAMPLE_PROP_NAME} parameter for "${paramName}" is missing from ${fconfig.path}.responses.${fconfig.expectedStatusCode}.${EXAMPLE_PROP_NAME}.${fconfig.exampleName}.parameters[${index}]`,
-        );
+        if (err.message === MISSING_PARAM_ERROR_MESSAGE) {
+          throw new Error(
+            `An ${EXAMPLE_PROP_NAME} parameter for "${paramName}" is missing from ${fconfig.path}.${fconfig.config.method}.responses.${fconfig.expectedStatusCode}.${EXAMPLE_PROP_NAME}.${fconfig.exampleName}.parameters[${index}]`,
+          );
+        }
+        // re-throw the error otherwise.
+        throw err;
       }
     }),
   );
@@ -276,7 +281,7 @@ async function resolveFetchConfigParams(params) {
 
 function getParamValue(serverUrl, inputObj, absSpecFilePath) {
   if (!inputObj) {
-    throw new Error(`Missing parameter object!`);
+    throw new Error(MISSING_PARAM_ERROR_MESSAGE);
   }
   if (inputObj.script !== undefined) {
     // TODO: The script MUST be relative to the spec file!

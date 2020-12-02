@@ -173,7 +173,7 @@ describe('CLI', () => {
       expect(result).toMatchInlineSnapshot(`
         "[33mwarn[39m: Ignore (no x-examples parameters) - GET /posts/{id} 200
         [33mwarn[39m: Ignore (no x-examples parameters) - GET /posts/{id} 404
-        [31merror[39m: An x-examples parameter for \\"userId\\" is missing from /posts.responses.200.x-examples.default.parameters[1]
+        [31merror[39m: An x-examples parameter for \\"userId\\" is missing from /posts.get.responses.200.x-examples.default.parameters[1]
         "
       `);
     });
