@@ -1,3 +1,10 @@
+## [1.4.2](https://github.com/digio/oaat/compare/v1.4.1...v1.4.2) (2020-12-03)
+
+
+### Bug Fixes
+
+* improve error message ([bbe9e23](https://github.com/digio/oaat/commit/bbe9e23cf93792afcadeeed8ae2708e7dd512efa))
+
 ## [1.4.1](https://github.com/digio/oaat/compare/v1.4.0...v1.4.1) (2020-12-02)
 
 
